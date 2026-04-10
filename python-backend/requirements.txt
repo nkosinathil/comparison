@@ -1,0 +1,57 @@
+# ========================================
+# Python Backend Dependencies
+# ========================================
+
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Async/Task Queue
+celery[redis]==5.3.4
+redis==5.0.1
+
+# Object Storage
+minio==7.2.0
+boto3==1.29.7  # Alternative S3 client if needed
+
+# HTTP Client
+httpx==0.25.2
+requests==2.31.0
+
+# File Upload/Download
+python-multipart==0.0.6
+
+# Logging
+python-json-logger==2.0.7
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# ========================================
+# Document Processing (from original app)
+# ========================================
+python-docx==1.1.0
+openpyxl==3.1.2
+pypdf==3.17.1
+PyPDF2==3.0.1
+extract-msg==0.45.0
+pillow==10.1.0
+pytesseract==0.3.10
+
+# ========================================
+# Development/Testing
+# ========================================
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx-mock==0.25.1
+
+# Code Quality
+black==23.12.0
+flake8==6.1.0
+isort==5.13.2
+
+# Type Checking
+mypy==1.7.1
