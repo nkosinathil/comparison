@@ -1,0 +1,9 @@
+PySide6
+python-docx
+openpyxl
+pypdf
+PyPDF2
+extract-msg
+pillow
+pytesseract
+requests
