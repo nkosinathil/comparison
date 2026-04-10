@@ -1,0 +1,7 @@
+*.sqlite
+out/
+out2/
+*.log
+__pycache__/
+*.pyc
+.env
