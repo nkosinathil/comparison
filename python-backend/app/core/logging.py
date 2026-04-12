@@ -39,41 +39,42 @@ def setup_logging(log_file: Optional[str] = None) -> logging.Logger:
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_level)
     
-    # File handler with rotation
+    # File handler with rotation (skip gracefully if path is unwritable)
+    file_handler = None
     if log_file:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        file_handler = logging.handlers.RotatingFileHandler(
-            log_file,
-            maxBytes=settings.log_max_size,
-            backupCount=settings.log_backup_count
-        )
-        file_handler.setLevel(log_level)
+        try:
+            log_path = Path(log_file)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=settings.log_max_size,
+                backupCount=settings.log_backup_count,
+            )
+            file_handler.setLevel(log_level)
+        except (PermissionError, OSError):
+            file_handler = None
     
     # Format
     if settings.log_format == "json":
-        # JSON format for production
         json_formatter = jsonlogger.JsonFormatter(
             "%(asctime)s %(name)s %(levelname)s %(message)s",
-            rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"}
+            rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
         )
         console_handler.setFormatter(json_formatter)
-        if log_file:
+        if file_handler:
             file_handler.setFormatter(json_formatter)
     else:
-        # Text format for development
         text_formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         console_handler.setFormatter(text_formatter)
-        if log_file:
+        if file_handler:
             file_handler.setFormatter(text_formatter)
-    
+
     # Add handlers
     logger.addHandler(console_handler)
-    if log_file:
+    if file_handler:
         logger.addHandler(file_handler)
     
     return logger
