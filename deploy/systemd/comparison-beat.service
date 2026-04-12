@@ -1,0 +1,26 @@
+[Unit]
+Description=File Comparison Celery Beat Scheduler
+After=network.target redis.service comparison-worker.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=comparison
+Group=comparison
+WorkingDirectory=/opt/comparison/python-backend
+EnvironmentFile=/opt/comparison/python-backend/.env
+ExecStart=/opt/comparison/venv/bin/celery -A app.tasks.celery_app beat \
+    --loglevel=info \
+    --schedule=/opt/comparison/celerybeat-schedule
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=comparison-beat
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/comparison /var/log/comparison-backend
+
+[Install]
+WantedBy=multi-user.target
