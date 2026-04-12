@@ -73,10 +73,9 @@ abstract class Controller
 
         // Get user data from session
         return [
-            'user_id' => $userId,
+            'id' => $userId,
             'email' => $this->session->get('user_email'),
-            'username' => $this->session->get('user_username'),
-            'full_name' => $this->session->get('user_full_name'),
+            'name' => $this->session->get('user_name'),
         ];
     }
 

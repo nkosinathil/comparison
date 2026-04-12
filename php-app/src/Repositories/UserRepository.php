@@ -3,6 +3,9 @@
  * User Repository
  * 
  * Handles user data access and Keycloak user synchronization.
+ * Column mapping matches database/schema.sql:
+ *   users(id, keycloak_sub, email, name, roles, created_at, last_login, is_active)
+ *   user_preferences(id, user_id, preference_key, preference_value, updated_at)
  */
 
 namespace App\Repositories;
@@ -41,7 +44,7 @@ class UserRepository
     {
         $conn = $this->db->getConnection();
         $stmt = $conn->prepare(
-            "SELECT * FROM users WHERE user_id = :id"
+            "SELECT * FROM users WHERE id = :id"
         );
         $stmt->execute(['id' => $id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -65,22 +68,25 @@ class UserRepository
     }
 
     /**
-     * Create or update user from Keycloak data
+     * Create or update user from Keycloak data.
+     * Maps Keycloak claims to schema columns:
+     *   sub           -> keycloak_sub
+     *   email         -> email
+     *   given_name + family_name (or preferred_username) -> name
+     *   realm_access.roles (if present) -> roles (TEXT[])
      */
     public function syncFromKeycloak(array $keycloakData): ?array
     {
         $conn = $this->db->getConnection();
 
-        // Extract user data
         $sub = $keycloakData['sub'] ?? null;
         $email = $keycloakData['email'] ?? null;
-        $username = $keycloakData['preferred_username'] ?? $email;
         $firstName = $keycloakData['given_name'] ?? '';
         $lastName = $keycloakData['family_name'] ?? '';
-        $fullName = trim($firstName . ' ' . $lastName);
-        
-        if (empty($fullName)) {
-            $fullName = $username;
+        $name = trim($firstName . ' ' . $lastName);
+
+        if (empty($name)) {
+            $name = $keycloakData['preferred_username'] ?? $email;
         }
 
         if (!$sub || !$email) {
@@ -88,16 +94,20 @@ class UserRepository
             return null;
         }
 
-        // Check if user exists
+        $roles = [];
+        if (isset($keycloakData['realm_access']['roles'])) {
+            $roles = $keycloakData['realm_access']['roles'];
+        }
+        $rolesLiteral = '{' . implode(',', array_map(fn($r) => '"' . $r . '"', $roles)) . '}';
+
         $existingUser = $this->findByKeycloakSub($sub);
 
         if ($existingUser) {
-            // Update existing user
             $stmt = $conn->prepare(
                 "UPDATE users 
                  SET email = :email,
-                     username = :username,
-                     full_name = :full_name,
+                     name = :name,
+                     roles = :roles,
                      last_login = NOW()
                  WHERE keycloak_sub = :sub
                  RETURNING *"
@@ -105,23 +115,22 @@ class UserRepository
 
             $stmt->execute([
                 'email' => $email,
-                'username' => $username,
-                'full_name' => $fullName,
+                'name' => $name,
+                'roles' => $rolesLiteral,
                 'sub' => $sub,
             ]);
         } else {
-            // Create new user
             $stmt = $conn->prepare(
-                "INSERT INTO users (keycloak_sub, email, username, full_name, last_login)
-                 VALUES (:sub, :email, :username, :full_name, NOW())
+                "INSERT INTO users (keycloak_sub, email, name, roles, last_login)
+                 VALUES (:sub, :email, :name, :roles, NOW())
                  RETURNING *"
             );
 
             $stmt->execute([
                 'sub' => $sub,
                 'email' => $email,
-                'username' => $username,
-                'full_name' => $fullName,
+                'name' => $name,
+                'roles' => $rolesLiteral,
             ]);
         }
 
@@ -136,55 +145,54 @@ class UserRepository
     {
         $conn = $this->db->getConnection();
         $stmt = $conn->prepare(
-            "UPDATE users SET last_login = NOW() WHERE user_id = :user_id"
+            "UPDATE users SET last_login = NOW() WHERE id = :id"
         );
-        return $stmt->execute(['user_id' => $userId]);
+        return $stmt->execute(['id' => $userId]);
     }
 
     /**
-     * Get user preferences
+     * Get user preferences as key-value array.
+     * Schema stores preferences as individual rows (preference_key, preference_value).
      */
     public function getPreferences(int $userId): array
     {
         $conn = $this->db->getConnection();
         $stmt = $conn->prepare(
-            "SELECT * FROM user_preferences WHERE user_id = :user_id"
+            "SELECT preference_key, preference_value FROM user_preferences WHERE user_id = :user_id"
         );
         $stmt->execute(['user_id' => $userId]);
-        $prefs = $stmt->fetch(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        return $prefs ?: [];
+        $prefs = [];
+        foreach ($rows as $row) {
+            $prefs[$row['preference_key']] = $row['preference_value'];
+        }
+        return $prefs;
     }
 
     /**
-     * Update user preferences
+     * Update user preferences (upsert individual key-value pairs)
      */
     public function updatePreferences(int $userId, array $preferences): bool
     {
         $conn = $this->db->getConnection();
 
-        // Check if preferences exist
-        $existing = $this->getPreferences($userId);
+        $stmt = $conn->prepare(
+            "INSERT INTO user_preferences (user_id, preference_key, preference_value, updated_at)
+             VALUES (:user_id, :key, :value, NOW())
+             ON CONFLICT (user_id, preference_key)
+             DO UPDATE SET preference_value = EXCLUDED.preference_value, updated_at = NOW()"
+        );
 
-        $settingsJson = json_encode($preferences);
-
-        if ($existing) {
-            $stmt = $conn->prepare(
-                "UPDATE user_preferences 
-                 SET settings = :settings::jsonb
-                 WHERE user_id = :user_id"
-            );
-        } else {
-            $stmt = $conn->prepare(
-                "INSERT INTO user_preferences (user_id, settings)
-                 VALUES (:user_id, :settings::jsonb)"
-            );
+        foreach ($preferences as $key => $value) {
+            $stmt->execute([
+                'user_id' => $userId,
+                'key' => $key,
+                'value' => is_array($value) ? json_encode($value) : (string)$value,
+            ]);
         }
 
-        return $stmt->execute([
-            'user_id' => $userId,
-            'settings' => $settingsJson,
-        ]);
+        return true;
     }
 
     /**
@@ -194,7 +202,7 @@ class UserRepository
     {
         $conn = $this->db->getConnection();
         $stmt = $conn->prepare(
-            "SELECT user_id, email, username, full_name, created_at, last_login
+            "SELECT id, email, name, roles, created_at, last_login, is_active
              FROM users
              ORDER BY created_at DESC
              LIMIT :limit OFFSET :offset"

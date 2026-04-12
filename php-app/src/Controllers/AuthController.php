@@ -144,10 +144,9 @@ class AuthController extends Controller
         }
 
         // Store user info in session
-        $this->session->set('user_id', $user['user_id']);
+        $this->session->set('user_id', $user['id']);
         $this->session->set('user_email', $user['email']);
-        $this->session->set('user_username', $user['username']);
-        $this->session->set('user_full_name', $user['full_name']);
+        $this->session->set('user_name', $user['name']);
         $this->session->set('access_token', $tokens['access_token']);
         $this->session->set('refresh_token', $tokens['refresh_token'] ?? null);
         $this->session->set('id_token', $tokens['id_token'] ?? null);
@@ -157,7 +156,7 @@ class AuthController extends Controller
 
         // Log successful login
         $this->auditRepo->logLogin(
-            $user['user_id'],
+            $user['id'],
             $this->getClientIp(),
             $this->getUserAgent()
         );
