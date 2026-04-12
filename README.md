@@ -26,78 +26,78 @@ User Browser → Keycloak (SSO) → PHP App → Python API → Celery Workers
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
-/home/runner/work/comparison/comparison/
-├── docs/                           # Comprehensive documentation
-│   ├── ANALYSIS.md                # Current vs target architecture analysis
-│   └── architecture.md            # Detailed system architecture
+├── docs/                           # Documentation
+│   ├── ANALYSIS.md                # Qt-to-web migration analysis
+│   ├── architecture.md            # 3-server architecture spec
+│   ├── PROJECT_STATUS.md          # Migration progress tracker
+│   └── SECURITY_FIXES.md         # Dependency vulnerability fixes
 │
 ├── database/                      # Database schema and migrations
-│   ├── schema.sql                # PostgreSQL schema
-│   └── migrations/               # Schema migrations
+│   ├── schema.sql                # PostgreSQL schema (all tables + sessions)
+│   └── migrations/               # Incremental migration scripts
 │
-├── deploy/                        # Deployment configurations
-│   ├── apache/                   # Apache vhost examples
-│   ├── systemd/                  # Systemd service files
-│   └── nginx/                    # Reverse proxy examples
-│
-├── php-app/                       # PHP Web Application
-│   ├── public/                   # Web-accessible files
-│   │   ├── index.php            # Application entry point
-│   │   ├── css/                 # Stylesheets
-│   │   ├── js/                  # JavaScript
-│   │   └── assets/              # Images, fonts, etc.
+├── php-app/                       # PHP Web Application (App Server)
+│   ├── public/                   # Web-accessible document root
+│   │   ├── index.php            # Front controller (all routes)
+│   │   ├── .htaccess            # Apache URL rewriting
+│   │   ├── css/app.css          # Stylesheet
+│   │   └── js/                  # Client-side JavaScript
+│   │       ├── app.js           # Global utilities
+│   │       └── comparison.js    # Upload + progress polling
 │   │
 │   ├── src/                      # PHP application code
-│   │   ├── Config/              # Configuration classes
-│   │   │   ├── AppConfig.php   # Main configuration
-│   │   │   ├── Database.php    # PostgreSQL connection
-│   │   │   └── Keycloak.php    # Keycloak OIDC config
-│   │   │
-│   │   ├── Controllers/         # HTTP request handlers
-│   │   ├── Services/            # Business logic
-│   │   ├── Repositories/        # Data access layer
-│   │   ├── Middleware/          # Auth, CSRF, etc.
-│   │   ├── Views/               # HTML templates
-│   │   └── Utils/               # Helper functions
+│   │   ├── Router.php           # URL-to-controller dispatcher
+│   │   ├── Config/              # Configuration (AppConfig, Database, Keycloak)
+│   │   ├── Controllers/         # AuthController, DashboardController,
+│   │   │                        # ComparisonController, ResultsController
+│   │   ├── Services/            # KeycloakService, SessionManager, PythonApiClient
+│   │   ├── Repositories/        # UserRepo, AuditLogRepo, CaseRepo, JobRepo
+│   │   ├── Middleware/          # Auth, CSRF, Guest middleware
+│   │   └── Views/               # PHP templates (layouts, dashboard,
+│   │                            # comparison, results, errors)
 │   │
-│   ├── storage/logs/            # Application logs
 │   ├── .env.example             # Environment template
-│   └── composer.json            # PHP dependencies
+│   └── composer.json            # PHP dependencies (Guzzle, phpdotenv, monolog)
 │
-└── python-backend/               # Python Processing Engine
-    ├── app/
-    │   ├── main.py              # FastAPI application
+├── python-backend/               # Python Processing Engine (Python Server)
+│   ├── app/
+│   │   ├── main.py              # FastAPI application entry point
+│   │   │
+│   │   ├── api/                 # API endpoints
+│   │   │   ├── health.py       # Health / readiness checks
+│   │   │   ├── upload.py       # File uploads to MinIO
+│   │   │   ├── process.py      # Job submission to Celery
+│   │   │   ├── tasks.py        # Task status + result endpoints
+│   │   │   └── results.py      # Result download / presigned URLs
+│   │   │
+│   │   ├── services/            # External service clients
+│   │   │   ├── minio_client.py # MinIO object storage
+│   │   │   └── redis_client.py # Redis cache (incl. fingerprint cache)
+│   │   │
+│   │   ├── tasks/               # Celery background tasks
+│   │   │   ├── celery_app.py   # Celery configuration
+│   │   │   └── comparison_tasks.py # Real comparison job + cleanup
+│   │   │
+│   │   ├── legacy_logic/        # Adapter for original comparison engine
+│   │   │   └── comparison_engine.py  # compare_files_from_bytes, report gen
+│   │   │
+│   │   ├── models/              # Data models
+│   │   │   └── schemas.py      # Pydantic request/response schemas
     │   │
-    │   ├── api/                 # API endpoints
-    │   │   ├── health.py       # Health checks
-    │   │   ├── upload.py       # File uploads
-    │   │   ├── process.py      # Job submission
-    │   │   ├── tasks.py        # Status polling
-    │   │   └── results.py      # Results retrieval
-    │   │
-    │   ├── services/            # Service clients
-    │   │   ├── minio_client.py # MinIO operations
-    │   │   └── redis_client.py # Redis caching
-    │   │
-    │   ├── tasks/               # Celery tasks
-    │   │   ├── celery_app.py   # Celery configuration
-    │   │   └── comparison_tasks.py # Comparison jobs
-    │   │
-    │   ├── models/              # Data models
-    │   │   └── schemas.py      # Pydantic schemas
-    │   │
-    │   ├── core/                # Core functionality
-    │   │   ├── config.py       # Settings
-    │   │   └── logging.py      # Logging setup
-    │   │
-    │   ├── adapters/            # Integration adapters
-    │   └── legacy_logic/        # Reused Qt app code
+    │   └── core/                # Core functionality
+    │       ├── config.py       # Pydantic settings
+    │       └── logging.py      # Structured logging
     │
     ├── .env.example             # Environment template
     └── requirements.txt         # Python dependencies
+│
+├── unified_compare_app.py       # Original comparison engine (CLI + library)
+├── unified_compare_qt.py        # Original PySide6 desktop GUI
+├── requirements.txt             # Original desktop app dependencies
+└── README_unified_compare_qt.txt # Original desktop app docs
 ```
 
 ---
