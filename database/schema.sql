@@ -4,6 +4,7 @@
 -- ========================================
 
 -- Drop existing tables (for clean install)
+DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS results CASCADE;
 DROP TABLE IF EXISTS job_progress CASCADE;
@@ -213,6 +214,26 @@ CREATE TABLE app_settings (
 );
 
 COMMENT ON TABLE app_settings IS 'Application configuration key-value store';
+
+-- ========================================
+-- SESSIONS TABLE
+-- ========================================
+-- Stores PHP session data when using database session driver
+CREATE TABLE sessions (
+    session_id VARCHAR(255) PRIMARY KEY,
+    data TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    last_activity TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX idx_sessions_last_activity ON sessions(last_activity);
+
+COMMENT ON TABLE sessions IS 'Stores PHP session data when using database session driver';
+COMMENT ON COLUMN sessions.session_id IS 'PHP session identifier';
+COMMENT ON COLUMN sessions.data IS 'Serialized session data';
+COMMENT ON COLUMN sessions.expires_at IS 'Session expiration timestamp';
 
 -- ========================================
 -- INITIAL DATA
