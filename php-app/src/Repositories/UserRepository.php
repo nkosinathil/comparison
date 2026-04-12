@@ -98,7 +98,11 @@ class UserRepository
         if (isset($keycloakData['realm_access']['roles'])) {
             $roles = $keycloakData['realm_access']['roles'];
         }
-        $rolesLiteral = '{' . implode(',', array_map(fn($r) => '"' . $r . '"', $roles)) . '}';
+        $sanitizedRoles = array_map(
+            fn($r) => '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $r) . '"',
+            array_filter($roles, fn($r) => is_string($r) && preg_match('/^[a-zA-Z0-9_\-]+$/', $r))
+        );
+        $rolesLiteral = '{' . implode(',', $sanitizedRoles) . '}';
 
         $existingUser = $this->findByKeycloakSub($sub);
 

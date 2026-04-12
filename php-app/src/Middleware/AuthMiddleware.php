@@ -75,7 +75,7 @@ class AuthMiddleware implements MiddlewareInterface
         $currentUrl = $_SERVER['REQUEST_URI'] ?? '/';
         $this->session->set('redirect_after_login', $currentUrl);
         
-        header('Location: /auth/login');
+        header('Location: /login');
         exit;
     }
 }

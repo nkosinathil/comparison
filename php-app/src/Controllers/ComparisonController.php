@@ -64,7 +64,13 @@ class ComparisonController extends Controller
         $caseName = $this->input('case_name', 'Comparison ' . date('Y-m-d H:i'));
         $caseId = (int)$this->input('case_id', 0);
 
-        if (!$caseId) {
+        if ($caseId) {
+            $case = $this->caseRepo->findById($caseId);
+            if (!$case || (int)$case['user_id'] !== $user['id']) {
+                $this->json(['error' => 'Case not found'], 404);
+                return;
+            }
+        } else {
             $case = $this->caseRepo->create($user['id'], $caseName);
             if (!$case) {
                 $this->json(['error' => 'Failed to create case'], 500);
@@ -158,6 +164,12 @@ class ComparisonController extends Controller
             return;
         }
 
+        $case = $this->caseRepo->findById($caseId);
+        if (!$case || (int)$case['user_id'] !== $user['id']) {
+            $this->json(['error' => 'Case not found'], 404);
+            return;
+        }
+
         $sourceUploads = $this->jobRepo->getUploadsByCase($caseId, 'source');
         $targetUploads = $this->jobRepo->getUploadsByCase($caseId, 'target');
 
@@ -242,7 +254,7 @@ class ComparisonController extends Controller
         $jobId = (int)$this->input('id');
         $job = $this->jobRepo->findJobById($jobId);
 
-        if (!$job) {
+        if (!$job || (int)$job['user_id'] !== $user['id']) {
             $this->json(['error' => 'Job not found'], 404);
             return;
         }
