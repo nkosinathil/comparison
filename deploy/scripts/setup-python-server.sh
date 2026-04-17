@@ -1,0 +1,249 @@
+#!/usr/bin/env bash
+# =============================================================================
+# setup-python-server.sh — Provision the Python Server
+# (FastAPI + Celery + Redis + MinIO)
+# Run ON the Python Server as root or with sudo. Idempotent.
+# =============================================================================
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "${SCRIPT_DIR}/lib.sh"
+load_config
+require_vars PYTHON_HOST PY_DEPLOY_DIR PY_VENV_DIR PY_LOG_DIR PY_SERVICE_USER PY_SERVICE_GROUP \
+             MINIO_ACCESS_KEY MINIO_SECRET_KEY API_KEY FASTAPI_PORT REDIS_PORT MINIO_PORT
+
+[ "$(id -u)" -eq 0 ] || die "This script must be run as root."
+
+TS=$(timestamp)
+
+# =========================================================================
+log_step "1/9 — Install system packages"
+# =========================================================================
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq python3 python3-venv python3-pip redis-server \
+  git curl wget tesseract-ocr > /dev/null
+log_info "System packages installed"
+
+# =========================================================================
+log_step "2/9 — Install MinIO (if not present)"
+# =========================================================================
+if ! command -v minio &>/dev/null; then
+  ARCH=$(dpkg --print-architecture 2>/dev/null || echo amd64)
+  wget -q "https://dl.min.io/server/minio/release/linux-${ARCH}/minio" -O /usr/local/bin/minio
+  chmod +x /usr/local/bin/minio
+  log_info "MinIO binary installed"
+else
+  log_info "MinIO already installed"
+fi
+
+if ! command -v mc &>/dev/null; then
+  ARCH=$(dpkg --print-architecture 2>/dev/null || echo amd64)
+  wget -q "https://dl.min.io/client/mc/release/linux-${ARCH}/mc" -O /usr/local/bin/mc
+  chmod +x /usr/local/bin/mc
+  log_info "MinIO client (mc) installed"
+else
+  log_info "mc already installed"
+fi
+
+# =========================================================================
+log_step "3/9 — Create service user"
+# =========================================================================
+ensure_user "$PY_SERVICE_USER"
+
+# =========================================================================
+log_step "4/9 — Create directory structure"
+# =========================================================================
+ensure_dir "$PY_DEPLOY_DIR" "${PY_SERVICE_USER}:${PY_SERVICE_GROUP}"
+ensure_dir "$PY_LOG_DIR" "${PY_SERVICE_USER}:${PY_SERVICE_GROUP}"
+ensure_dir "/tmp/comparison_processing" "${PY_SERVICE_USER}:${PY_SERVICE_GROUP}" 1777
+ensure_dir "/data/minio" "${PY_SERVICE_USER}:${PY_SERVICE_GROUP}"
+
+# =========================================================================
+log_step "5/9 — Deploy Python backend code"
+# =========================================================================
+REPO_PY="${SCRIPT_DIR}/../../python-backend"
+REPO_ROOT="${SCRIPT_DIR}/../.."
+
+if [ -d "$REPO_PY" ]; then
+  rsync -a --delete --exclude='.env' --exclude='__pycache__/' --exclude='.pytest_cache/' \
+    "${REPO_PY}/" "${PY_DEPLOY_DIR}/python-backend/"
+  log_info "Python backend synced"
+fi
+
+# Copy unified_compare_app.py to repo root level (needed by legacy_logic adapter)
+if [ -f "${REPO_ROOT}/unified_compare_app.py" ]; then
+  cp "${REPO_ROOT}/unified_compare_app.py" "${PY_DEPLOY_DIR}/"
+  log_info "unified_compare_app.py copied"
+fi
+
+# =========================================================================
+log_step "6/9 — Create virtualenv and install dependencies"
+# =========================================================================
+if [ ! -d "$PY_VENV_DIR" ]; then
+  python3 -m venv "$PY_VENV_DIR"
+  log_info "Virtualenv created"
+fi
+
+"${PY_VENV_DIR}/bin/pip" install --upgrade pip -q
+"${PY_VENV_DIR}/bin/pip" install -r "${PY_DEPLOY_DIR}/python-backend/requirements.txt" -q 2>&1 | tail -3
+log_info "Python dependencies installed"
+
+chown -R "${PY_SERVICE_USER}:${PY_SERVICE_GROUP}" "$PY_DEPLOY_DIR"
+
+# =========================================================================
+log_step "7/9 — Write Python .env"
+# =========================================================================
+PY_ENV="${PY_DEPLOY_DIR}/python-backend/.env"
+write_env_file "$PY_ENV" \
+  APP_NAME          "comparison-backend" \
+  APP_ENV           "production" \
+  LOG_LEVEL         "INFO" \
+  API_KEY           "$API_KEY" \
+  FASTAPI_HOST      "0.0.0.0" \
+  FASTAPI_PORT      "$FASTAPI_PORT" \
+  FASTAPI_WORKERS   "4" \
+  FASTAPI_RELOAD    "false" \
+  REDIS_HOST        "localhost" \
+  REDIS_PORT        "$REDIS_PORT" \
+  REDIS_DB_BROKER   "0" \
+  REDIS_DB_RESULT   "1" \
+  REDIS_DB_CACHE    "2" \
+  MINIO_ENDPOINT    "localhost:${MINIO_PORT}" \
+  MINIO_ACCESS_KEY  "$MINIO_ACCESS_KEY" \
+  MINIO_SECRET_KEY  "$MINIO_SECRET_KEY" \
+  MINIO_SECURE      "false" \
+  LOG_FILE          "${PY_LOG_DIR}/app.log" \
+  LOG_FORMAT        "json" \
+  TEMP_DIR          "/tmp/comparison_processing"
+
+chown "${PY_SERVICE_USER}:${PY_SERVICE_GROUP}" "$PY_ENV"
+chmod 600 "$PY_ENV"
+log_info "Python .env written"
+
+# =========================================================================
+log_step "8/9 — Install systemd services"
+# =========================================================================
+
+# --- MinIO ---
+cat > /etc/systemd/system/minio.service <<UNIT
+[Unit]
+Description=MinIO Object Storage
+After=network.target
+[Service]
+Type=simple
+User=${PY_SERVICE_USER}
+Group=${PY_SERVICE_GROUP}
+Environment="MINIO_ROOT_USER=${MINIO_ACCESS_KEY}"
+Environment="MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}"
+ExecStart=/usr/local/bin/minio server /data/minio --address ":${MINIO_PORT}" --console-address ":${MINIO_CONSOLE_PORT:-9001}"
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# --- FastAPI ---
+cat > /etc/systemd/system/comparison-api.service <<UNIT
+[Unit]
+Description=File Comparison FastAPI Backend
+After=network.target redis.service minio.service
+Wants=redis.service minio.service
+[Service]
+Type=simple
+User=${PY_SERVICE_USER}
+Group=${PY_SERVICE_GROUP}
+WorkingDirectory=${PY_DEPLOY_DIR}/python-backend
+EnvironmentFile=${PY_ENV}
+ExecStart=${PY_VENV_DIR}/bin/uvicorn app.main:app --host 0.0.0.0 --port ${FASTAPI_PORT} --workers 4 --log-level info
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=comparison-api
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=${PY_DEPLOY_DIR} ${PY_LOG_DIR} /tmp/comparison_processing
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# --- Celery Worker ---
+cat > /etc/systemd/system/comparison-worker.service <<UNIT
+[Unit]
+Description=File Comparison Celery Worker
+After=network.target redis.service minio.service comparison-api.service
+Wants=redis.service minio.service
+[Service]
+Type=simple
+User=${PY_SERVICE_USER}
+Group=${PY_SERVICE_GROUP}
+WorkingDirectory=${PY_DEPLOY_DIR}/python-backend
+EnvironmentFile=${PY_ENV}
+ExecStart=${PY_VENV_DIR}/bin/celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4 --max-tasks-per-child=100
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=comparison-worker
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=${PY_DEPLOY_DIR} ${PY_LOG_DIR} /tmp/comparison_processing
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+# --- Celery Beat ---
+cat > /etc/systemd/system/comparison-beat.service <<UNIT
+[Unit]
+Description=File Comparison Celery Beat Scheduler
+After=network.target redis.service comparison-worker.service
+Wants=redis.service
+[Service]
+Type=simple
+User=${PY_SERVICE_USER}
+Group=${PY_SERVICE_GROUP}
+WorkingDirectory=${PY_DEPLOY_DIR}/python-backend
+EnvironmentFile=${PY_ENV}
+ExecStart=${PY_VENV_DIR}/bin/celery -A app.tasks.celery_app beat --loglevel=info --schedule=${PY_DEPLOY_DIR}/celerybeat-schedule
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=comparison-beat
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=${PY_DEPLOY_DIR} ${PY_LOG_DIR}
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+
+# =========================================================================
+log_step "9/9 — Start services and create MinIO buckets"
+# =========================================================================
+systemctl enable redis-server minio comparison-api comparison-worker comparison-beat
+systemctl restart redis-server
+systemctl restart minio
+sleep 3  # wait for MinIO to be ready
+
+# Create MinIO buckets
+mc alias set local "http://localhost:${MINIO_PORT}" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" 2>/dev/null || true
+for bucket in uploads results cache; do
+  mc mb --ignore-existing "local/${bucket}" 2>/dev/null || true
+done
+log_info "MinIO buckets ensured: uploads, results, cache"
+
+systemctl restart comparison-api comparison-worker comparison-beat
+sleep 2
+
+# ---- Firewall ----
+if command -v ufw &>/dev/null; then
+  ufw allow from "$APP_HOST" to any port "$FASTAPI_PORT" proto tcp comment "FastAPI from App" 2>/dev/null || true
+  ufw allow from "$APP_HOST" to any port "$REDIS_PORT" proto tcp comment "Redis from App" 2>/dev/null || true
+  ufw allow 22/tcp comment "SSH" 2>/dev/null || true
+  log_info "UFW rules applied"
+fi
+
+log_info "=== Python server setup complete ==="

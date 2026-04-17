@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# =============================================================================
+# deploy.conf — Central deployment configuration
+# Copy to deploy.conf and fill in real values before running any scripts.
+# All scripts source this file for parameters.
+# =============================================================================
+
+# ---- Project ----
+PROJECT_NAME="comparison"
+REPO_URL="https://github.com/nkosinathil/comparison.git"
+DEPLOY_REF="cursor/continue-migration-85c4"
+
+# ---- Servers ----
+SSO_HOST="192.168.1.59"
+APP_HOST="192.168.1.66"
+PYTHON_HOST="192.168.1.90"
+
+SSH_USER_SSO="deploy"
+SSH_USER_APP="deploy"
+SSH_USER_PY="deploy"
+
+# ---- Public URLs (no trailing slash) ----
+APP_BASE_URL="http://192.168.1.66"
+KEYCLOAK_PUBLIC_URL="http://192.168.1.59:8080"
+
+# ---- Keycloak ----
+KEYCLOAK_REALM="comparison"
+KEYCLOAK_CLIENT_ID="comparison-web-app"
+KEYCLOAK_ADMIN_USER="admin"
+KEYCLOAK_ADMIN_PASSWORD="CHANGE_ME"
+# Client secret will be auto-generated and stored here after keycloak setup:
+KEYCLOAK_CLIENT_SECRET=""
+
+# ---- Database (on APP_HOST) ----
+DB_NAME="comparison_app"
+DB_USER="comparison_user"
+DB_PASSWORD="CHANGE_ME_DB_PASSWORD"
+
+# ---- MinIO (on PYTHON_HOST) ----
+MINIO_ACCESS_KEY="minioadmin"
+MINIO_SECRET_KEY="CHANGE_ME_MINIO_SECRET"
+
+# ---- Shared API key (PHP <-> Python) ----
+# Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+API_KEY="CHANGE_ME_SHARED_API_KEY"
+
+# ---- Paths ----
+APP_DEPLOY_DIR="/var/www/gismartanalytics"
+PY_DEPLOY_DIR="/opt/comparison"
+PY_VENV_DIR="${PY_DEPLOY_DIR}/venv"
+PY_LOG_DIR="/var/log/comparison-backend"
+
+# ---- Service user (Python server) ----
+PY_SERVICE_USER="comparison"
+PY_SERVICE_GROUP="comparison"
+
+# ---- PHP version (auto-detected if empty) ----
+PHP_VERSION=""
+
+# ---- Ports ----
+FASTAPI_PORT="8000"
+REDIS_PORT="6379"
+MINIO_PORT="9000"
+MINIO_CONSOLE_PORT="9001"
+PG_PORT="5432"
