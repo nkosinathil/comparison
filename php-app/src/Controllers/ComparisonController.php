@@ -251,6 +251,7 @@ class ComparisonController extends Controller
             return;
         }
 
+        $user = $this->getUser();
         $jobId = (int)$this->input('id');
         $job = $this->jobRepo->findJobById($jobId);
 
