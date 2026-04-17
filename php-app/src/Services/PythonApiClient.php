@@ -16,17 +16,25 @@ class PythonApiClient
 {
     private Client $http;
     private string $baseUrl;
+    private string $apiKey;
 
     public function __construct()
     {
         $config = AppConfig::getInstance();
         $this->baseUrl = rtrim($config->get('python_api.url', 'http://192.168.1.90:8000'), '/');
         $timeout = (int)$config->get('python_api.timeout', 30);
+        $this->apiKey = $config->get('python_api.api_key', '');
+
+        $headers = [];
+        if ($this->apiKey) {
+            $headers['X-API-Key'] = $this->apiKey;
+        }
 
         $this->http = new Client([
             'base_uri' => $this->baseUrl,
             'timeout' => $timeout,
             'http_errors' => false,
+            'headers' => $headers,
         ]);
     }
 
