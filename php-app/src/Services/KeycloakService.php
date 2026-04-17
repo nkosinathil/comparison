@@ -1,14 +1,17 @@
 <?php
 /**
  * Keycloak Service
- * 
- * Handles Keycloak OIDC authentication flows.
+ *
+ * Handles Keycloak OIDC authentication flows with proper JWT verification.
  */
 
 namespace App\Services;
 
 use App\Config\AppConfig;
 use App\Config\Keycloak;
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+use Firebase\JWT\Key;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -17,6 +20,8 @@ class KeycloakService
     private Keycloak $keycloak;
     private Client $httpClient;
     private AppConfig $config;
+
+    private static ?array $jwksCache = null;
 
     public function __construct()
     {
@@ -61,7 +66,7 @@ class KeycloakService
             ]);
 
             $data = json_decode($response->getBody()->getContents(), true);
-            
+
             if (isset($data['access_token'])) {
                 return $data;
             }
@@ -89,7 +94,7 @@ class KeycloakService
             ]);
 
             $data = json_decode($response->getBody()->getContents(), true);
-            
+
             if (isset($data['access_token'])) {
                 return $data;
             }
@@ -102,7 +107,7 @@ class KeycloakService
     }
 
     /**
-     * Get user information from Keycloak
+     * Get user information from Keycloak userinfo endpoint
      */
     public function getUserInfo(string $accessToken): ?array
     {
@@ -113,8 +118,7 @@ class KeycloakService
                 ],
             ]);
 
-            $data = json_decode($response->getBody()->getContents(), true);
-            return $data;
+            return json_decode($response->getBody()->getContents(), true);
         } catch (GuzzleException $e) {
             error_log("Get user info failed: " . $e->getMessage());
             return null;
@@ -122,11 +126,10 @@ class KeycloakService
     }
 
     /**
-     * Validate access token
+     * Validate access token by calling userinfo endpoint
      */
     public function validateToken(string $accessToken): bool
     {
-        // Attempt to get user info - if successful, token is valid
         $userInfo = $this->getUserInfo($accessToken);
         return $userInfo !== null;
     }
@@ -149,13 +152,79 @@ class KeycloakService
     }
 
     /**
-     * Decode JWT token (basic, no signature verification)
-     * For production, use a proper JWT library with signature verification
+     * Decode and verify a JWT token using Keycloak's JWKS public keys.
+     *
+     * Falls back to unsigned decode if the JWKS endpoint is unreachable
+     * (e.g. during initial dev setup), but logs a warning.
      */
     public function decodeToken(string $token): ?array
     {
+        try {
+            $keys = $this->getJwks();
+            if ($keys) {
+                $decoded = JWT::decode($token, $keys);
+                return (array) $decoded;
+            }
+        } catch (\Exception $e) {
+            error_log("JWT verification failed: " . $e->getMessage());
+            return null;
+        }
+
+        return $this->decodeTokenUnsafe($token);
+    }
+
+    /**
+     * Check if token is expired.
+     * Uses verified decode when possible.
+     */
+    public function isTokenExpired(string $token): bool
+    {
+        $decoded = $this->decodeToken($token);
+
+        if (!$decoded || !isset($decoded['exp'])) {
+            return true;
+        }
+
+        return time() >= $decoded['exp'];
+    }
+
+    /**
+     * Fetch Keycloak JWKS keys (cached per request).
+     *
+     * @return array<string, Key>|null
+     */
+    private function getJwks(): ?array
+    {
+        if (self::$jwksCache !== null) {
+            return self::$jwksCache;
+        }
+
+        try {
+            $response = $this->httpClient->get($this->keycloak->getCertsUrl());
+            $jwksData = json_decode($response->getBody()->getContents(), true);
+
+            if (!$jwksData || empty($jwksData['keys'])) {
+                error_log("Keycloak JWKS response empty");
+                return null;
+            }
+
+            self::$jwksCache = JWK::parseKeySet($jwksData);
+            return self::$jwksCache;
+        } catch (\Exception $e) {
+            error_log("Failed to fetch Keycloak JWKS: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Fallback: decode JWT payload without signature verification.
+     * Used ONLY when JWKS is unreachable. Logs a warning.
+     */
+    private function decodeTokenUnsafe(string $token): ?array
+    {
+        error_log("WARNING: Decoding JWT without signature verification — JWKS unavailable");
+
         $parts = explode('.', $token);
-        
         if (count($parts) !== 3) {
             return null;
         }
@@ -167,19 +236,5 @@ class KeycloakService
             error_log("Token decode failed: " . $e->getMessage());
             return null;
         }
-    }
-
-    /**
-     * Check if token is expired
-     */
-    public function isTokenExpired(string $token): bool
-    {
-        $decoded = $this->decodeToken($token);
-        
-        if (!$decoded || !isset($decoded['exp'])) {
-            return true;
-        }
-
-        return time() >= $decoded['exp'];
     }
 }
