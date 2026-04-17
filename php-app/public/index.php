@@ -9,6 +9,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Config\AppConfig;
 use App\Router;
+use App\Middleware\CsrfMiddleware;
 use App\Controllers\AuthController;
 use App\Controllers\DashboardController;
 use App\Controllers\ComparisonController;
@@ -26,9 +27,12 @@ if (AppConfig::getInstance()->get('app.debug')) {
     ini_set('display_errors', '0');
 }
 
+// Ensure a CSRF token exists for every request (needed by views/JS)
+CsrfMiddleware::getToken();
+
 $router = new Router();
 
-// --- Auth routes ---
+// --- Auth routes (OAuth callback is CSRF-exempt by nature: it is GET) ---
 $router->get('/login', AuthController::class, 'login');
 $router->get('/auth/callback', AuthController::class, 'callback');
 $router->get('/logout', AuthController::class, 'logout');

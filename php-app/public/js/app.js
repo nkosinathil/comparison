@@ -11,3 +11,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 5000);
     });
 });
+
+/**
+ * Return the CSRF token from the <meta> tag.
+ */
+function getCsrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}

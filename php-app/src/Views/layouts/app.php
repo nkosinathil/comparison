@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'File Comparison') ?></title>
+    <meta name="csrf-token" content="<?= htmlspecialchars(\App\Middleware\CsrfMiddleware::getToken()) ?>">
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>

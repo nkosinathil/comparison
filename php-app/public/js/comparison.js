@@ -1,5 +1,7 @@
 /**
  * Comparison page — file uploads, job submission, and progress polling.
+ *
+ * Depends on getCsrfToken() from app.js (loaded first via layout).
  */
 (function () {
     'use strict';
@@ -52,6 +54,7 @@
 
         fetch('/comparison/upload', {
             method: 'POST',
+            headers: { 'X-CSRF-TOKEN': getCsrfToken() },
             body: formData,
         })
         .then(function (resp) { return resp.json(); })
@@ -108,7 +111,10 @@
 
         fetch('/comparison/start', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
             body: body,
         })
         .then(function (resp) { return resp.json(); })
