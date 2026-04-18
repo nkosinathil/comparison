@@ -30,7 +30,7 @@ for target in "$@"; do
   echo "==> Configuring SSH key login for ${target}"
   ssh-copy-id -i "$PUB_KEY" -o StrictHostKeyChecking=accept-new "$target"
 
-  if ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$target" "echo ok" >/dev/null 2>&1; then
+  if ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$target" "echo ok" >/dev/null 2>&1; then
     echo "    OK: key-based login verified for ${target}"
   else
     echo "    ERROR: key-based login verification failed for ${target}" >&2
