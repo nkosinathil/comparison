@@ -33,7 +33,7 @@ run_remote() {
   local host="$2"
   local cmd="$3"
   echo "==== [${user}@${host}] $cmd"
-  printf '%s\n' "$cmd" | ssh "${SSH_OPTS[@]}" "${user}@${host}" "bash -se"
+  printf '%s\n' "$cmd" | ssh "${SSH_OPTS[@]}" "${user}@${host}" "bash -seu"
 }
 
 sync_repo_cmd="
