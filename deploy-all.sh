@@ -4,24 +4,26 @@ set -Eeuo pipefail
 # =========================
 # Required config (edit me)
 # =========================
-SSO_USER="ssoadmin"
-APP_USER="apps"
-PY_USER="pyminio"
+SSO_USER="${SSO_USER:-__SET_ME__}"
+APP_USER="${APP_USER:-__SET_ME__}"
+PY_USER="${PY_USER:-__SET_ME__}"
 
-SSO_HOST="192.168.1.59"
-APP_HOST="192.168.1.66"
-PY_HOST="192.168.1.90"
+SSO_HOST="${SSO_HOST:-__SET_ME__}"
+APP_HOST="${APP_HOST:-__SET_ME__}"
+PY_HOST="${PY_HOST:-__SET_ME__}"
 
-REPO_URL="git@github.com:nkosinathil/comparison.git"
-DEPLOY_REF="main"
+REPO_URL="${REPO_URL:-__SET_ME__}"
+DEPLOY_REF="${DEPLOY_REF:-main}"
 
 # Absolute path on remote servers
-CLONE_DIR="/opt/comparison-deploy"
+CLONE_DIR="${CLONE_DIR:-/opt/comparison-deploy}"
 
 # App deploy dir from repo convention
-APP_DEPLOY_DIR="/var/www/comparison.gismartanalytics"
+APP_DEPLOY_DIR="${APP_DEPLOY_DIR:-/var/www/comparison.gismartanalytics}"
 
-SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+# NOTE: accept-new auto-trusts first-seen host keys for bootstrap automation.
+# For stricter security, pre-seed known_hosts and change this to StrictHostKeyChecking=yes.
+SSH_OPTS="${SSH_OPTS:--o BatchMode=yes -o StrictHostKeyChecking=accept-new}"
 
 # =========================
 # Helpers
@@ -57,6 +59,23 @@ else
     || (git clone '${REPO_URL}' '${CLONE_DIR}' && cd '${CLONE_DIR}' && git checkout '${DEPLOY_REF}'))
 fi
 "
+
+require_set() {
+  local name="$1"
+  local value="$2"
+  if [[ -z "$value" || "$value" == "__SET_ME__" ]]; then
+    echo "ERROR: Set ${name} before running." >&2
+    exit 1
+  fi
+}
+
+require_set "SSO_USER" "${SSO_USER}"
+require_set "APP_USER" "${APP_USER}"
+require_set "PY_USER" "${PY_USER}"
+require_set "SSO_HOST" "${SSO_HOST}"
+require_set "APP_HOST" "${APP_HOST}"
+require_set "PY_HOST" "${PY_HOST}"
+require_set "REPO_URL" "${REPO_URL}"
 
 # =========================
 # 1) Sync repo on all servers
