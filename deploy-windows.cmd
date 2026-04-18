@@ -152,17 +152,17 @@ if errorlevel 1 (
 echo [PHASE 0/5] SSH pre-checks ^(key-based auth required^)...
 ssh %SSH_OPTS% %SSH_USER_APP%@%APP_HOST% "echo ok"
 if errorlevel 1 (
-  echo ERROR: SSH pre-check failed for App Server. Configure SSH key-based login for %SSH_USER_APP%@%APP_HOST%.
+  echo ERROR: SSH pre-check failed for App Server. Configure SSH key-based login for %SSH_USER_APP%@%APP_HOST% ^(e.g., run ./setup-ssh-keys.sh %SSH_USER_APP%@%APP_HOST% from a bash shell^).
   exit /b 1
 )
 ssh %SSH_OPTS% %SSH_USER_PY%@%PYTHON_HOST% "echo ok"
 if errorlevel 1 (
-  echo ERROR: SSH pre-check failed for Python Server. Configure SSH key-based login for %SSH_USER_PY%@%PYTHON_HOST%.
+  echo ERROR: SSH pre-check failed for Python Server. Configure SSH key-based login for %SSH_USER_PY%@%PYTHON_HOST% ^(e.g., run ./setup-ssh-keys.sh %SSH_USER_PY%@%PYTHON_HOST% from a bash shell^).
   exit /b 1
 )
 ssh %SSH_OPTS% %SSH_USER_SSO%@%SSO_HOST% "echo ok"
 if errorlevel 1 (
-  echo ERROR: SSH pre-check failed for SSO Server. Configure SSH key-based login for %SSH_USER_SSO%@%SSO_HOST%.
+  echo ERROR: SSH pre-check failed for SSO Server. Configure SSH key-based login for %SSH_USER_SSO%@%SSO_HOST% ^(e.g., run ./setup-ssh-keys.sh %SSH_USER_SSO%@%SSO_HOST% from a bash shell^).
   exit /b 1
 )
 echo   SSH pre-checks passed.
