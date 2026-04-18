@@ -25,9 +25,9 @@ SSO_HOST="192.168.1.59"
 APP_HOST="192.168.1.66"
 PYTHON_HOST="192.168.1.90"
 
-SSH_USER_SSO="deploy"
-SSH_USER_APP="deploy"
-SSH_USER_PY="deploy"
+SSH_USER_SSO="ssoadmin"
+SSH_USER_APP="apps"
+SSH_USER_PY="pyminio"
 
 # ---- Public URLs (no trailing slash) ----
 APP_BASE_URL="http://192.168.1.66"
@@ -39,8 +39,8 @@ KEYCLOAK_PUBLIC_URL="http://192.168.1.59:8080"
 # It will only add/update the client inside the realm.
 KEYCLOAK_REALM="forensic"
 KEYCLOAK_CLIENT_ID="comparison-web-app"
-KEYCLOAK_ADMIN_USER="admin"
-KEYCLOAK_ADMIN_PASSWORD="CHANGE_ME"
+KEYCLOAK_ADMIN_USER="tempadmin"
+KEYCLOAK_ADMIN_PASSWORD="TempAdmin#2026"
 # Client secret will be auto-generated and stored here after keycloak setup:
 KEYCLOAK_CLIENT_SECRET=""
 
@@ -48,7 +48,7 @@ KEYCLOAK_CLIENT_SECRET=""
 # Uses its own database, user, and schema — will not touch other databases.
 DB_NAME="comparison_app"
 DB_USER="comparison_user"
-DB_PASSWORD="CHANGE_ME_DB_PASSWORD"
+DB_PASSWORD="5ucc3SS!@#s"
 
 # ---- Redis (on PYTHON_HOST) ----
 # Uses dedicated DB indices to avoid collisions with other apps sharing Redis.
@@ -63,13 +63,13 @@ REDIS_DB_CACHE="10"
 # When false, just provide the endpoint/credentials of the existing MinIO.
 MINIO_MANAGED="true"
 MINIO_ACCESS_KEY="minioadmin"
-MINIO_SECRET_KEY="CHANGE_ME_MINIO_SECRET"
+MINIO_SECRET_KEY="n80FuR61Xah4wD6aEe3Dar8G2xIOsJUy"
 MINIO_DATA_DIR="/data/comparison-minio"
 MINIO_SERVICE_NAME="comparison-minio"
 
 # ---- Shared API key (PHP <-> Python) ----
 # Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-API_KEY="CHANGE_ME_SHARED_API_KEY"
+API_KEY="b73906ec5f8222caeb548f8bedf03ea1bccfe96e21baa370"
 
 # ---- Paths ----
 APP_DEPLOY_DIR="/var/www/gismartanalytics"
