@@ -7,6 +7,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ---- Repo root detection ----
+# If running from inside the git clone, SCRIPT_DIR is <repo>/deploy/scripts.
+# REPO_ROOT can be overridden by setting it before sourcing lib.sh, or by
+# setting it in deploy.conf. This is the directory that contains php-app/,
+# python-backend/, database/, unified_compare_app.py.
+if [ -z "${REPO_ROOT:-}" ]; then
+  _candidate="${SCRIPT_DIR}/../.."
+  if [ -f "${_candidate}/unified_compare_app.py" ] && [ -d "${_candidate}/php-app" ]; then
+    REPO_ROOT="$(cd "$_candidate" && pwd)"
+  else
+    REPO_ROOT=""
+  fi
+fi
+
 # ---- Colors (safe for non-tty) ----
 if [ -t 1 ]; then
   RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -41,10 +55,40 @@ require_vars() {
   [ "$missing" -eq 0 ] || die "Fix the missing variables above and re-run."
 }
 
+# ---- Require repo root ----
+require_repo() {
+  if [ -z "${REPO_ROOT:-}" ]; then
+    die "REPO_ROOT is not set and could not be auto-detected.
+  Either:
+    1. Run this script from inside the git clone (deploy/scripts/), or
+    2. Set REPO_ROOT=/path/to/clone in deploy.conf, or
+    3. Use deploy-all.sh which clones the repo automatically."
+  fi
+  [ -d "${REPO_ROOT}/php-app" ] || die "REPO_ROOT=${REPO_ROOT} does not contain php-app/. Wrong path?"
+  [ -d "${REPO_ROOT}/python-backend" ] || die "REPO_ROOT=${REPO_ROOT} does not contain python-backend/."
+  [ -f "${REPO_ROOT}/unified_compare_app.py" ] || die "REPO_ROOT=${REPO_ROOT} does not contain unified_compare_app.py."
+}
+
+# ---- Clone or update repo on the local machine ----
+clone_or_update_repo() {
+  local dest="$1" url="$2" ref="$3"
+  if [ -d "${dest}/.git" ]; then
+    log_info "Repo already cloned at $dest — pulling latest..."
+    cd "$dest"
+    git fetch origin 2>/dev/null || true
+    git checkout "$ref" 2>/dev/null || git checkout "origin/${ref}" 2>/dev/null || true
+    git pull origin "$ref" 2>/dev/null || true
+    cd - >/dev/null
+  else
+    log_info "Cloning $url (ref: $ref) into $dest..."
+    git clone --branch "$ref" --single-branch "$url" "$dest" 2>/dev/null || \
+      git clone "$url" "$dest" && cd "$dest" && git checkout "$ref" && cd - >/dev/null
+  fi
+}
+
 # ---- Safe .env writer (handles special chars) ----
 write_env_var() {
   local file="$1" key="$2" value="$3"
-  # Remove existing line for this key, then append with proper quoting
   if [ -f "$file" ]; then
     sed -i "/^${key}=/d" "$file"
   fi
@@ -53,7 +97,7 @@ write_env_var() {
 
 write_env_file() {
   local file="$1"; shift
-  : > "$file"  # truncate
+  : > "$file"
   while [ $# -ge 2 ]; do
     write_env_var "$file" "$1" "$2"
     shift 2

@@ -14,6 +14,12 @@ PROJECT_NAME="comparison"
 REPO_URL="https://github.com/nkosinathil/comparison.git"
 DEPLOY_REF="cursor/continue-migration-85c4"
 
+# Where the repo is (or will be) cloned on each server.
+# The orchestrator (deploy-all.sh) clones automatically to this path.
+# When running setup scripts directly, set this to your clone location.
+# If empty, auto-detected from script location (works when running from inside the clone).
+REPO_ROOT=""
+
 # ---- Servers ----
 SSO_HOST="192.168.1.59"
 APP_HOST="192.168.1.66"

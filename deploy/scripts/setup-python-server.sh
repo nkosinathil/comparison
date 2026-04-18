@@ -21,6 +21,7 @@ require_vars PYTHON_HOST PY_DEPLOY_DIR PY_VENV_DIR PY_LOG_DIR PY_SERVICE_USER PY
              REDIS_DB_BROKER REDIS_DB_RESULT REDIS_DB_CACHE
 
 [ "$(id -u)" -eq 0 ] || die "This script must be run as root."
+require_repo
 
 TS=$(timestamp)
 MINIO_MANAGED="${MINIO_MANAGED:-true}"
@@ -81,8 +82,7 @@ fi
 # =========================================================================
 log_step "5/9 — Deploy Python backend code"
 # =========================================================================
-REPO_PY="${SCRIPT_DIR}/../../python-backend"
-REPO_ROOT="${SCRIPT_DIR}/../.."
+REPO_PY="${REPO_ROOT}/python-backend"
 
 if [ -d "$REPO_PY" ]; then
   rsync -a --delete --exclude='.env' --exclude='__pycache__/' --exclude='.pytest_cache/' \

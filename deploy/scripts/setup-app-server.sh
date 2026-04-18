@@ -20,6 +20,7 @@ require_vars APP_HOST APP_BASE_URL APP_DEPLOY_DIR DB_NAME DB_USER DB_PASSWORD \
              PYTHON_HOST FASTAPI_PORT API_KEY
 
 [ "$(id -u)" -eq 0 ] || die "This script must be run as root."
+require_repo
 
 TS=$(timestamp)
 PHP_V=$(detect_php_version 2>/dev/null || true)
@@ -112,7 +113,7 @@ fi
 # =========================================================================
 log_step "4/8 — Load database schema"
 # =========================================================================
-SCHEMA_FILE="${SCRIPT_DIR}/../../database/schema.sql"
+SCHEMA_FILE="${REPO_ROOT}/database/schema.sql"
 if [ -f "$SCHEMA_FILE" ]; then
   TABLE_COUNT=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST_ACTUAL" -U "$DB_USER" -d "$DB_NAME" -tAc \
     "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" 2>/dev/null || echo 0)
@@ -133,14 +134,13 @@ ensure_dir "$APP_DEPLOY_DIR" "www-data:www-data"
 ensure_dir "${APP_DEPLOY_DIR}/storage/logs" "www-data:www-data"
 ensure_dir "${APP_DEPLOY_DIR}/storage/cache" "www-data:www-data"
 
-REPO_PHP="${SCRIPT_DIR}/../../php-app"
+REPO_PHP="${REPO_ROOT}/php-app"
 if [ -d "$REPO_PHP" ]; then
   rsync -a --delete --exclude='.env' --exclude='vendor/' \
     "${REPO_PHP}/" "${APP_DEPLOY_DIR}/"
   log_info "PHP app synced to $APP_DEPLOY_DIR"
 fi
 
-REPO_ROOT="${SCRIPT_DIR}/../.."
 if [ -f "${REPO_ROOT}/unified_compare_app.py" ]; then
   cp "${REPO_ROOT}/unified_compare_app.py" "${APP_DEPLOY_DIR}/" 2>/dev/null || true
 fi

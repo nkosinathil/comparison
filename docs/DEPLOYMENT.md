@@ -16,7 +16,7 @@ The deployment is automated via scripts in `deploy/scripts/`. All parameters are
 
 ## Quick Start
 
-### 1. Configure
+### 1. Configure (on your operator workstation)
 
 ```bash
 cd deploy/scripts
@@ -27,26 +27,40 @@ nano deploy.conf
 
 ### 2. Deploy (from operator workstation with SSH access)
 
+The orchestrator **automatically clones the repo** on each target server. You do not need to manually pull the repo onto the servers — `deploy-all.sh` handles it:
+
+1. SSHes to each server
+2. Clones the repo (or `git pull` if already cloned) to `/opt/comparison-deploy/`
+3. Copies `deploy.conf` (with your secrets) into the clone
+4. Runs the setup script from inside the clone
+
 **Linux / macOS:**
 ```bash
 bash deploy/scripts/deploy-all.sh
 ```
 
-**Windows CMD (via SSH to a jump box, or with Git Bash):**
+**Windows CMD (via Git Bash / WSL):**
 ```cmd
 bash deploy/scripts/deploy-all.sh
 ```
 
-**Or, run on each server directly:**
+**Or, clone and run on each server manually:**
 ```bash
+# On each server: clone the repo first
+git clone --branch cursor/continue-migration-85c4 https://github.com/nkosinathil/comparison.git /opt/comparison-deploy
+cd /opt/comparison-deploy/deploy/scripts
+cp deploy.conf.example deploy.conf
+nano deploy.conf  # fill in values
+
+# Then run the appropriate setup script:
 # On SSO server (or any machine with curl + jq):
-bash deploy/scripts/deploy-all.sh --local-only keycloak
+bash setup-keycloak.sh
 
 # On App server (as root):
-sudo bash deploy/scripts/setup-app-server.sh
+sudo bash setup-app-server.sh
 
 # On Python server (as root):
-sudo bash deploy/scripts/setup-python-server.sh
+sudo bash setup-python-server.sh
 ```
 
 ### 3. Validate
@@ -105,9 +119,15 @@ This runs in order:
 
 **Per-server deployment** (run directly on each server):
 ```bash
-# Copy the entire repo + deploy.conf to the server, then:
-sudo bash deploy/scripts/setup-app-server.sh     # on App server
-sudo bash deploy/scripts/setup-python-server.sh   # on Python server
+# Clone the repo onto the server first:
+git clone --branch cursor/continue-migration-85c4 \
+  https://github.com/nkosinathil/comparison.git /opt/comparison-deploy
+cd /opt/comparison-deploy/deploy/scripts
+cp deploy.conf.example deploy.conf && nano deploy.conf
+
+# Then run the setup script:
+sudo bash setup-app-server.sh     # on App server
+sudo bash setup-python-server.sh   # on Python server
 ```
 
 ### Step 3: Validate
