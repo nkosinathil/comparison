@@ -24,8 +24,9 @@ The following security vulnerabilities were identified and patched in `requireme
 - **Vulnerabilities**: 
   - Buffer overflow vulnerability (v10.1.0)
   - Out-of-bounds write when loading PSD images (v10.4.0)
-- **Previous Version**: 10.1.0 → 10.4.0 (still vulnerable) → **12.1.1** ✅
-- **Patched Version**: 12.1.1 (minimum required)
+  - FITS GZIP decompression bomb vulnerability (affects >=10.3.0,<12.2.0)
+- **Previous Version**: 10.1.0 → 10.4.0 (still vulnerable) → 12.1.1 (still vulnerable) → **12.2.0** ✅
+- **Patched Version**: 12.2.0 (minimum required)
 - **Severity**: High
 - **Impact**: Production runtime - affects TIFF OCR and any image processing
 
@@ -47,7 +48,7 @@ All dependencies are now updated to secure versions:
 |---------|---------------|--------|
 | black | 26.3.1 | ✅ Secure |
 | fastapi | 0.115.0 | ✅ Secure |
-| pillow | 12.1.1 | ✅ Secure |
+| pillow | 12.2.0 | ✅ Secure |
 | python-multipart | 0.0.22 | ✅ Secure |
 
 ### Verification
@@ -62,7 +63,7 @@ pip list | grep -E "black|fastapi|pillow|python-multipart"
 # Expected output:
 # black        26.3.1
 # fastapi      0.115.0
-# pillow       12.1.1
+# pillow       12.2.0
 # python-multipart  0.0.22
 ```
 
@@ -111,7 +112,7 @@ When deploying to production:
 
 ### Important Compatibility Notes
 
-- **Pillow 10.4.0 → 12.1.1**: **MAJOR VERSION JUMP** 🚨
+- **Pillow 10.4.0 → 12.2.0**: **MAJOR VERSION JUMP** 🚨
   - This is a significant update across multiple major versions
   - May have breaking API changes
   - **Critical Testing Required**:
@@ -135,7 +136,7 @@ When deploying to production:
 
 ### Known Potential Issues
 
-#### Pillow 12.1.1 Compatibility
+#### Pillow 12.2.0 Compatibility
 
 Since Pillow jumped from 10.x to 12.x, potential issues to watch for:
 
@@ -155,7 +156,7 @@ Since Pillow jumped from 10.x to 12.x, potential issues to watch for:
 
 #### Migration Path
 
-If Pillow 12.1.1 causes issues:
+If Pillow 12.2.0 causes issues:
 
 **Option 1**: Stay on latest 10.x (if vulnerabilities are acceptable in your environment)
 ```python
@@ -168,7 +169,7 @@ pip install "pillow>=11.0,<12.0"
 # Then check for vulnerabilities
 ```
 
-**Option 3**: Fix code compatibility with 12.1.1 (recommended)
+**Option 3**: Fix code compatibility with 12.2.0 (recommended)
 - Review Pillow migration guides
 - Update image processing code as needed
 - This is the most secure long-term solution
@@ -242,9 +243,8 @@ Before deploying to production:
 ---
 
 **Next Action**: 
-1. **Immediately test Pillow 12.1.1 compatibility** with TIFF OCR and image processing
+1. **Immediately test Pillow 12.2.0 compatibility** with TIFF OCR and image processing
 2. If issues arise, document them and determine mitigation strategy
 3. Only deploy to production after successful testing
 
 **Priority**: The Pillow update is critical for security but requires careful validation due to the major version jump.
-

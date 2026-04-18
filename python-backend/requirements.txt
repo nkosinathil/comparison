@@ -37,7 +37,7 @@ openpyxl==3.1.2
 pypdf==3.17.1
 PyPDF2==3.0.1
 extract-msg==0.45.0
-pillow==12.1.1  # Updated from 10.4.0 - fixes out-of-bounds write in PSD loading
+pillow==12.2.0  # Updated from 12.1.1 - fixes FITS GZIP decompression bomb vulnerability
 pytesseract==0.3.10
 
 # ========================================
