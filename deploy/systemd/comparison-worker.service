@@ -1,0 +1,28 @@
+[Unit]
+Description=File Comparison Celery Worker
+After=network.target redis.service minio.service comparison-api.service
+Wants=redis.service minio.service
+
+[Service]
+Type=simple
+User=comparison
+Group=comparison
+WorkingDirectory=/opt/comparison/python-backend
+EnvironmentFile=/opt/comparison/python-backend/.env
+ExecStart=/opt/comparison/venv/bin/celery -A app.tasks.celery_app worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --max-tasks-per-child=100
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=comparison-worker
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/comparison /var/log/comparison-backend /tmp/comparison_processing
+
+[Install]
+WantedBy=multi-user.target
