@@ -17,8 +17,34 @@ load_config
 require_vars KEYCLOAK_PUBLIC_URL KEYCLOAK_REALM KEYCLOAK_CLIENT_ID \
              KEYCLOAK_ADMIN_USER KEYCLOAK_ADMIN_PASSWORD APP_BASE_URL
 
-command -v curl &>/dev/null || die "curl is required"
-command -v jq &>/dev/null || die "jq is required"
+ensure_dep() {
+  local cmd="$1" pkg="${2:-$1}"
+
+  if command -v "$cmd" &>/dev/null; then
+    return 0
+  fi
+
+  log_warn "${cmd} is missing; attempting to install package '${pkg}'..."
+
+  if ! command -v apt-get &>/dev/null; then
+    die "${cmd} is required. Install package '${pkg}' and re-run."
+  fi
+
+  if command -v sudo &>/dev/null; then
+    sudo apt-get update -qq && sudo apt-get install -y -qq "$pkg" || \
+      die "Failed to install '${pkg}'. Install it manually and re-run."
+  elif [ "$(id -u)" -eq 0 ]; then
+    apt-get update -qq && apt-get install -y -qq "$pkg" || \
+      die "Failed to install '${pkg}'. Install it manually and re-run."
+  else
+    die "${cmd} is required but cannot auto-install without sudo/root. Install '${pkg}' and re-run."
+  fi
+
+  command -v "$cmd" &>/dev/null || die "${cmd} is still unavailable after install. Install '${pkg}' manually and re-run."
+}
+
+ensure_dep curl curl
+ensure_dep jq jq
 
 KC_URL="${KEYCLOAK_PUBLIC_URL}"
 REALM="${KEYCLOAK_REALM}"
