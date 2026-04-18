@@ -93,7 +93,7 @@ async def authenticate_and_log(request: Request, call_next):
         )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"error": "Internal server error", "detail": str(e)},
+            content={"error": "Internal server error"},
         )
 
 

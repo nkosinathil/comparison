@@ -201,13 +201,11 @@ def tfidf_cosine_similarity(tokens_a: List[str], tokens_b: List[str]) -> float:
     for w in vocab:
         doc_count[w] = (1 if w in tf_a else 0) + (1 if w in tf_b else 0)
 
-    import math as _m
-
     def _tfidf(tf: Counter, total: int) -> Dict[str, float]:
         vec: Dict[str, float] = {}
         for w in vocab:
             raw_tf = tf.get(w, 0) / total if total else 0.0
-            idf = _m.log(2.0 / doc_count[w]) + 1.0
+            idf = math.log(2.0 / doc_count[w]) + 1.0
             vec[w] = raw_tf * idf
         return vec
 
@@ -215,8 +213,8 @@ def tfidf_cosine_similarity(tokens_a: List[str], tokens_b: List[str]) -> float:
     vb = _tfidf(tf_b, len(tokens_b))
 
     dot = sum(va[w] * vb[w] for w in vocab)
-    na = _m.sqrt(sum(v * v for v in va.values()))
-    nb = _m.sqrt(sum(v * v for v in vb.values()))
+    na = math.sqrt(sum(v * v for v in va.values()))
+    nb = math.sqrt(sum(v * v for v in vb.values()))
     if na == 0.0 or nb == 0.0:
         return 0.0
     return float(dot) / float(na * nb)
