@@ -22,24 +22,24 @@ set "KEYCLOAK_PUBLIC_URL=http://192.168.1.59:8080"
 set "KEYCLOAK_REALM=forensic"
 set "KEYCLOAK_CLIENT_ID=comparison-web-app"
 set "KEYCLOAK_ADMIN_USER=admin"
-set "KEYCLOAK_ADMIN_PASSWORD=admin123"
+set "KEYCLOAK_ADMIN_PASSWORD=__SET_ME__"
 
 set "DB_NAME=comparison_app"
 set "DB_USER=comparison_user"
-set "DB_PASSWORD=5ucc3SS!@#s"
+set "DB_PASSWORD=__SET_ME__"
 
 set "MINIO_MANAGED=true"
 set "MINIO_ACCESS_KEY=minioadmin"
-set "MINIO_SECRET_KEY=n80FuR61Xah4wD6aEe3Dar8G2xIOsJUy"
+set "MINIO_SECRET_KEY=__SET_ME__"
 
-set "API_KEY=b73906ec5f8222caeb548f8bedf03ea1bccfe96e21baa370"
+set "API_KEY=__SET_ME__"
 
 set "REDIS_DB_BROKER=8"
 set "REDIS_DB_RESULT=9"
 set "REDIS_DB_CACHE=10"
 
 REM ---- DO NOT EDIT BELOW THIS LINE ----
-set "SSH_OPTS=-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+set "SSH_OPTS=-o StrictHostKeyChecking=yes -o ConnectTimeout=15"
 
 echo.
 echo =========================================================
@@ -49,6 +49,23 @@ echo   Python: %PYTHON_HOST%
 echo   SSO:    %SSO_HOST%
 echo =========================================================
 echo.
+
+if "%KEYCLOAK_ADMIN_PASSWORD%"=="__SET_ME__" (
+  echo ERROR: Set KEYCLOAK_ADMIN_PASSWORD before running.
+  exit /b 1
+)
+if "%DB_PASSWORD%"=="__SET_ME__" (
+  echo ERROR: Set DB_PASSWORD before running.
+  exit /b 1
+)
+if "%MINIO_SECRET_KEY%"=="__SET_ME__" (
+  echo ERROR: Set MINIO_SECRET_KEY before running.
+  exit /b 1
+)
+if "%API_KEY%"=="__SET_ME__" (
+  echo ERROR: Set API_KEY before running.
+  exit /b 1
+)
 
 echo [PHASE 0/5] SSH pre-checks...
 ssh %SSH_OPTS% %SSH_USER_APP%@%APP_HOST% "echo ok"
