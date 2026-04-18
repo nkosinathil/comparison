@@ -80,7 +80,8 @@ bash deploy/scripts/validate.sh
 | SSO | Keycloak running, admin credentials available |
 | App | Ubuntu/Debian, SSH access, root/sudo |
 | Python | Ubuntu/Debian, SSH access, root/sudo |
-| Operator | SSH keys configured for all servers, `curl`, `jq` installed |
+| Operator (Linux) | SSH keys configured for all servers, `curl`, `jq` installed |
+| Operator (Windows) | OpenSSH client (`ssh.exe`) — built into Windows 10+ |
 
 ### Step 1: Prepare deploy.conf
 
@@ -106,16 +107,24 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"  # MINIO_SECRET_KE
 
 ### Step 2: Run Deployment
 
-**Full automated deployment** (orchestrator SSHes to each server):
+**From Windows CMD** (recommended for Windows operators):
+```cmd
+REM Edit the variables at the top of the script first:
+notepad deploy\scripts\deploy-windows.cmd
+
+REM Then run it:
+deploy\scripts\deploy-windows.cmd
+```
+
+This does everything over SSH — no bash, curl, or jq needed on your Windows machine. It:
+1. SSHes to App Server → clones repo → runs `setup-keycloak.sh` + `setup-app-server.sh`
+2. SSHes to Python Server → clones repo → runs `setup-python-server.sh`
+3. SSHes to App Server → runs `validate.sh`
+
+**From Linux/macOS bash:**
 ```bash
 bash deploy/scripts/deploy-all.sh
 ```
-
-This runs in order:
-1. `setup-keycloak.sh` — creates realm, client, roles; saves client secret
-2. `setup-app-server.sh` — installs packages, configures DB, deploys PHP, writes `.env`, configures Apache
-3. `setup-python-server.sh` — installs packages, deploys Python, writes `.env`, installs systemd services, starts everything
-4. `validate.sh` — runs all health checks
 
 **Per-server deployment** (run directly on each server):
 ```bash
