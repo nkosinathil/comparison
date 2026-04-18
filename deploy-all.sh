@@ -25,6 +25,12 @@ APP_DEPLOY_DIR="${APP_DEPLOY_DIR:-/var/www/comparison.gismartanalytics}"
 # For stricter security, pre-seed known_hosts and change this to StrictHostKeyChecking=yes.
 SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 
+# Local deploy config path:
+# - preferred: ./deploy.conf (repo root)
+# - fallback: ./deploy/scripts/deploy.conf
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_DEPLOY_CONF="${LOCAL_DEPLOY_CONF:-}"
+
 # =========================
 # Helpers
 # =========================
@@ -34,6 +40,35 @@ run_remote() {
   local cmd="$3"
   echo "==== [${user}@${host}] $cmd"
   printf '%s\n' "$cmd" | ssh "${SSH_OPTS[@]}" "${user}@${host}" "bash -seu"
+}
+
+resolve_local_deploy_conf() {
+  if [[ -n "${LOCAL_DEPLOY_CONF}" ]]; then
+    [[ -f "${LOCAL_DEPLOY_CONF}" ]] || {
+      echo "ERROR: LOCAL_DEPLOY_CONF file not found: ${LOCAL_DEPLOY_CONF}" >&2
+      exit 1
+    }
+    return
+  fi
+
+  if [[ -f "${SCRIPT_DIR}/deploy.conf" ]]; then
+    LOCAL_DEPLOY_CONF="${SCRIPT_DIR}/deploy.conf"
+  elif [[ -f "${SCRIPT_DIR}/deploy/scripts/deploy.conf" ]]; then
+    LOCAL_DEPLOY_CONF="${SCRIPT_DIR}/deploy/scripts/deploy.conf"
+  else
+    echo "ERROR: Missing deploy.conf. Create one with:" >&2
+    echo "  cp -n '${SCRIPT_DIR}/deploy/scripts/deploy.conf.example' '${SCRIPT_DIR}/deploy.conf'" >&2
+    echo "  # then edit '${SCRIPT_DIR}/deploy.conf'" >&2
+    exit 1
+  fi
+}
+
+copy_deploy_conf() {
+  local user="$1"
+  local host="$2"
+  local remote_conf="${CLONE_DIR}/deploy/scripts/deploy.conf"
+  echo "==== [${user}@${host}] copy ${LOCAL_DEPLOY_CONF} -> ${remote_conf}"
+  scp "${SSH_OPTS[@]}" "${LOCAL_DEPLOY_CONF}" "${user}@${host}:${remote_conf}"
 }
 
 sync_repo_cmd="
@@ -76,6 +111,7 @@ require_set "SSO_HOST" "${SSO_HOST}"
 require_set "APP_HOST" "${APP_HOST}"
 require_set "PY_HOST" "${PY_HOST}"
 require_set "REPO_URL" "${REPO_URL}"
+resolve_local_deploy_conf
 
 # =========================
 # 1) Sync repo on all servers
@@ -83,6 +119,13 @@ require_set "REPO_URL" "${REPO_URL}"
 run_remote "${SSO_USER}" "${SSO_HOST}" "${sync_repo_cmd}"
 run_remote "${APP_USER}" "${APP_HOST}" "${sync_repo_cmd}"
 run_remote "${PY_USER}" "${PY_HOST}" "${sync_repo_cmd}"
+
+# =========================
+# 1.5) Push deploy.conf to all server clones
+# =========================
+copy_deploy_conf "${SSO_USER}" "${SSO_HOST}"
+copy_deploy_conf "${APP_USER}" "${APP_HOST}"
+copy_deploy_conf "${PY_USER}" "${PY_HOST}"
 
 # =========================
 # 2) Run setup scripts
