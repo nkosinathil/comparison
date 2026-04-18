@@ -65,7 +65,7 @@ async def get_task_status(task_id: str):
         logger.error(f"Failed to get task status for {task_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get task status: {str(e)}"
+            detail="Failed to get task status"
         )
 
 
@@ -123,5 +123,5 @@ async def get_task_result(task_id: str):
         logger.error(f"Failed to get task result for {task_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get task result: {str(e)}"
+            detail="Failed to get task result"
         )

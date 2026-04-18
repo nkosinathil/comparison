@@ -46,7 +46,7 @@ async def upload_file(
         logger.error(f"Failed to read uploaded file: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to read file: {str(e)}"
+            detail="Failed to read file"
         )
     
     # Check file size
@@ -85,7 +85,7 @@ async def upload_file(
         logger.error(f"MinIO upload failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload file to storage: {str(e)}"
+            detail="Failed to upload file to storage"
         )
     
     return UploadResponse(
@@ -120,5 +120,5 @@ async def delete_file(bucket: str, object_key: str):
         logger.error(f"Failed to delete file: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete file: {str(e)}"
+            detail="Failed to delete file"
         )

@@ -74,7 +74,7 @@ async def process_comparison(request: ProcessRequest):
         logger.error(f"Failed to queue job {request.job_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to queue job: {str(e)}"
+            detail="Failed to queue job"
         )
 
 
@@ -109,5 +109,5 @@ async def cancel_job(task_id: str):
         logger.error(f"Failed to cancel task {task_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cancel task: {str(e)}"
+            detail="Failed to cancel task"
         )

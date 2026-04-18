@@ -66,7 +66,7 @@ async def download_result_file(bucket: str, object_key: str):
         logger.error(f"Failed to download file {bucket}/{object_key}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"File not found or download failed: {str(e)}"
+            detail="File not found or download failed"
         )
 
 
@@ -108,5 +108,5 @@ async def get_presigned_url(bucket: str, object_key: str, expires: int = 3600):
         logger.error(f"Failed to generate presigned URL: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate presigned URL: {str(e)}"
+            detail="Failed to generate presigned URL"
         )
