@@ -3,6 +3,13 @@
 # setup-app-server.sh — Provision the Application Server (Apache + PHP + PG)
 # Run ON the App Server as root or with sudo.
 # Idempotent: safe to re-run.
+#
+# MULTI-PLATFORM SAFE:
+# - Does NOT disable other Apache sites (no a2dissite 000-default)
+# - Does NOT restart shared PHP-FPM pool (graceful reload only)
+# - Does NOT overwrite postgresql.conf listen_addresses if already open
+# - Adds pg_hba entries for this app only (scoped to DB_NAME + DB_USER)
+# - Apache vhost uses explicit ServerName to coexist with other vhosts
 # =============================================================================
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,14 +25,12 @@ TS=$(timestamp)
 PHP_V=$(detect_php_version 2>/dev/null || true)
 
 # =========================================================================
-log_step "1/8 — Install system packages"
+log_step "1/8 — Install system packages (additive only)"
 # =========================================================================
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 
-# Install PHP + Apache + PostgreSQL client
 if [ -z "$PHP_V" ]; then
-  # Install PHP (distro default)
   apt-get install -y -qq apache2 libapache2-mod-fcgid \
     php-fpm php-pgsql php-curl php-mbstring php-xml php-zip \
     postgresql-client unzip git curl > /dev/null
@@ -38,16 +43,14 @@ else
 fi
 log_info "PHP version: $PHP_V"
 
-# Install Composer if missing
 if ! command -v composer &>/dev/null; then
   curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
   log_info "Composer installed"
 fi
 
 # =========================================================================
-log_step "2/8 — PostgreSQL: create database and user"
+log_step "2/8 — PostgreSQL: create database and user (scoped — no global changes)"
 # =========================================================================
-# Assumes PG is local or on APP_HOST. If remote, adjust DB_HOST.
 DB_HOST_ACTUAL="${DB_HOST:-localhost}"
 
 if sudo -u postgres psql -lqt 2>/dev/null | cut -d\| -f1 | grep -qw "$DB_NAME"; then
@@ -71,15 +74,14 @@ sudo -u postgres psql -c "
 " 2>/dev/null
 log_info "DB user $DB_USER configured"
 
-# Grant schema privileges
 sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL ON SCHEMA public TO ${DB_USER};" 2>/dev/null
 
 # =========================================================================
-log_step "3/8 — PostgreSQL: pg_hba.conf (allow app + python hosts)"
+log_step "3/8 — PostgreSQL: pg_hba.conf (additive — scoped to this app's DB/user)"
 # =========================================================================
 PG_HBA=$(sudo -u postgres psql -t -c "SHOW hba_file;" 2>/dev/null | xargs)
 if [ -f "$PG_HBA" ]; then
-  HBA_MARKER="# comparison-app-deploy"
+  HBA_MARKER="# ${PROJECT_NAME}-deploy"
   if ! grep -q "$HBA_MARKER" "$PG_HBA"; then
     {
       echo "$HBA_MARKER"
@@ -87,15 +89,21 @@ if [ -f "$PG_HBA" ]; then
       echo "host  ${DB_NAME}  ${DB_USER}  ${APP_HOST}/32     scram-sha-256"
       echo "host  ${DB_NAME}  ${DB_USER}  ${PYTHON_HOST}/32  scram-sha-256"
     } >> "$PG_HBA"
-    log_info "Added pg_hba entries"
+    log_info "Added pg_hba entries (scoped to ${DB_NAME}/${DB_USER})"
   else
     log_info "pg_hba entries already present"
   fi
 
-  # Ensure listen_addresses includes the app host
+  # Check if listen_addresses already allows remote connections
   PG_CONF=$(sudo -u postgres psql -t -c "SHOW config_file;" 2>/dev/null | xargs)
-  if [ -f "$PG_CONF" ] && ! grep -q "listen_addresses.*'\\*'" "$PG_CONF"; then
-    sed -i "s/^#\?listen_addresses.*/listen_addresses = '*'/" "$PG_CONF" 2>/dev/null || true
+  CURRENT_LISTEN=$(sudo -u postgres psql -tAc "SHOW listen_addresses;" 2>/dev/null || echo "localhost")
+  if [ "$CURRENT_LISTEN" = "localhost" ] || [ "$CURRENT_LISTEN" = "" ]; then
+    log_warn "PostgreSQL listen_addresses is '$CURRENT_LISTEN' (localhost only)."
+    log_warn "Remote connections from PYTHON_HOST ($PYTHON_HOST) will fail."
+    log_warn "To fix: edit $PG_CONF and set listen_addresses = '*' then restart PostgreSQL."
+    log_warn "Skipping automatic change to avoid breaking other applications."
+  else
+    log_info "PostgreSQL listen_addresses='$CURRENT_LISTEN' (already allows remote)"
   fi
 
   systemctl reload postgresql 2>/dev/null || true
@@ -106,7 +114,6 @@ log_step "4/8 — Load database schema"
 # =========================================================================
 SCHEMA_FILE="${SCRIPT_DIR}/../../database/schema.sql"
 if [ -f "$SCHEMA_FILE" ]; then
-  # Check if tables already exist
   TABLE_COUNT=$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST_ACTUAL" -U "$DB_USER" -d "$DB_NAME" -tAc \
     "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';" 2>/dev/null || echo 0)
   if [ "${TABLE_COUNT:-0}" -lt 5 ]; then
@@ -126,7 +133,6 @@ ensure_dir "$APP_DEPLOY_DIR" "www-data:www-data"
 ensure_dir "${APP_DEPLOY_DIR}/storage/logs" "www-data:www-data"
 ensure_dir "${APP_DEPLOY_DIR}/storage/cache" "www-data:www-data"
 
-# Copy application files
 REPO_PHP="${SCRIPT_DIR}/../../php-app"
 if [ -d "$REPO_PHP" ]; then
   rsync -a --delete --exclude='.env' --exclude='vendor/' \
@@ -134,13 +140,11 @@ if [ -d "$REPO_PHP" ]; then
   log_info "PHP app synced to $APP_DEPLOY_DIR"
 fi
 
-# Copy unified_compare_app.py (needed by Python backend but keep in repo root for reference)
 REPO_ROOT="${SCRIPT_DIR}/../.."
 if [ -f "${REPO_ROOT}/unified_compare_app.py" ]; then
   cp "${REPO_ROOT}/unified_compare_app.py" "${APP_DEPLOY_DIR}/" 2>/dev/null || true
 fi
 
-# Composer install
 cd "$APP_DEPLOY_DIR"
 if [ -f composer.json ]; then
   COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction 2>&1 | tail -5
@@ -186,13 +190,16 @@ chown www-data:www-data "$PHP_ENV"
 log_info "PHP .env written"
 
 # =========================================================================
-log_step "7/8 — Configure Apache"
+log_step "7/8 — Configure Apache (additive — does NOT disable other sites)"
 # =========================================================================
 FPM_SOCK="/run/php/php${PHP_V}-fpm.sock"
 
+# Extract ServerName from APP_BASE_URL (strip protocol and port)
+SERVER_NAME=$(echo "$APP_BASE_URL" | sed -E 's|^https?://||; s|:[0-9]+$||')
+
 cat > /etc/apache2/sites-available/comparison-app.conf <<VHOST
 <VirtualHost *:80>
-    ServerName ${APP_HOST}
+    ServerName ${SERVER_NAME}
     DocumentRoot ${APP_DEPLOY_DIR}/public
 
     <Directory ${APP_DEPLOY_DIR}/public>
@@ -221,23 +228,24 @@ VHOST
 
 a2enmod rewrite headers proxy_fcgi setenvif 2>/dev/null || true
 a2ensite comparison-app 2>/dev/null || true
-a2dissite 000-default 2>/dev/null || true
+# NOTE: We do NOT run a2dissite 000-default — other sites may depend on it.
 
-# Fix ownership
 chown -R www-data:www-data "$APP_DEPLOY_DIR"
 
-systemctl restart "php${PHP_V}-fpm" apache2
-log_info "Apache + PHP-FPM configured and restarted"
+# Graceful reload (not restart) to avoid dropping connections for other vhosts
+systemctl reload "php${PHP_V}-fpm" 2>/dev/null || systemctl restart "php${PHP_V}-fpm"
+systemctl reload apache2 2>/dev/null || systemctl restart apache2
+log_info "Apache vhost enabled and services reloaded (other sites unaffected)"
 
 # =========================================================================
-log_step "8/8 — Firewall (UFW)"
+log_step "8/8 — Firewall (UFW — additive rules only)"
 # =========================================================================
 if command -v ufw &>/dev/null; then
   ufw allow 80/tcp comment "HTTP" 2>/dev/null || true
   ufw allow 443/tcp comment "HTTPS" 2>/dev/null || true
-  ufw allow from "$PYTHON_HOST" to any port "$PG_PORT" proto tcp comment "PG from Python" 2>/dev/null || true
+  ufw allow from "$PYTHON_HOST" to any port "$PG_PORT" proto tcp comment "PG from Python ($PROJECT_NAME)" 2>/dev/null || true
   ufw allow 22/tcp comment "SSH" 2>/dev/null || true
-  log_info "UFW rules applied"
+  log_info "UFW rules applied (additive)"
 fi
 
 log_info "=== App server setup complete ==="
