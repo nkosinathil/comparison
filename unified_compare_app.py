@@ -35,6 +35,7 @@ import re
 import sqlite3
 import sys
 import time
+from collections import Counter
 from dataclasses import dataclass, asdict
 from email import policy
 from email.parser import BytesParser
@@ -188,8 +189,6 @@ def tfidf_cosine_similarity(tokens_a: List[str], tokens_b: List[str]) -> float:
     """Compute TF-IDF weighted cosine similarity between two token lists."""
     if not tokens_a or not tokens_b:
         return 0.0
-
-    from collections import Counter
 
     tf_a = Counter(tokens_a)
     tf_b = Counter(tokens_b)
