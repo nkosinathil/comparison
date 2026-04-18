@@ -39,7 +39,7 @@ set "REDIS_DB_RESULT=9"
 set "REDIS_DB_CACHE=10"
 
 REM ---- DO NOT EDIT BELOW THIS LINE ----
-set "SSH_OPTS=-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+set "SSH_OPTS=-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 
 echo.
 echo =========================================================
@@ -149,20 +149,20 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [PHASE 0/5] SSH pre-checks...
+echo [PHASE 0/5] SSH pre-checks ^(key-based auth required^)...
 ssh %SSH_OPTS% %SSH_USER_APP%@%APP_HOST% "echo ok"
 if errorlevel 1 (
-  echo ERROR: SSH pre-check failed for App Server
+  echo ERROR: SSH pre-check failed for App Server. Configure SSH key-based login for %SSH_USER_APP%@%APP_HOST%.
   exit /b 1
 )
 ssh %SSH_OPTS% %SSH_USER_PY%@%PYTHON_HOST% "echo ok"
 if errorlevel 1 (
-  echo ERROR: SSH pre-check failed for Python Server
+  echo ERROR: SSH pre-check failed for Python Server. Configure SSH key-based login for %SSH_USER_PY%@%PYTHON_HOST%.
   exit /b 1
 )
 ssh %SSH_OPTS% %SSH_USER_SSO%@%SSO_HOST% "echo ok"
 if errorlevel 1 (
-  echo ERROR: SSH pre-check failed for SSO Server
+  echo ERROR: SSH pre-check failed for SSO Server. Configure SSH key-based login for %SSH_USER_SSO%@%SSO_HOST%.
   exit /b 1
 )
 echo   SSH pre-checks passed.
