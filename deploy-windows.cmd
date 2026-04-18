@@ -5,20 +5,20 @@ REM deploy-windows.cmd — Windows CMD deployment driver
 REM =============================================================================
 
 REM ---- EDIT THESE VALUES ----
-set "REPO_URL=https://github.com/nkosinathil/comparison.git"
-set "DEPLOY_REF=cursor/continue-migration-85c4"
+set "REPO_URL=__SET_ME__"
+set "DEPLOY_REF=__SET_ME__"
 set "CLONE_DIR=/opt/comparison-deploy"
 
-set "SSO_HOST=192.168.1.59"
-set "APP_HOST=192.168.1.66"
-set "PYTHON_HOST=192.168.1.90"
+set "SSO_HOST=__SET_ME__"
+set "APP_HOST=__SET_ME__"
+set "PYTHON_HOST=__SET_ME__"
 
 set "SSH_USER_SSO=deploy"
 set "SSH_USER_APP=deploy"
 set "SSH_USER_PY=deploy"
 
-set "APP_BASE_URL=http://192.168.1.66"
-set "KEYCLOAK_PUBLIC_URL=http://192.168.1.59:8080"
+set "APP_BASE_URL=__SET_ME__"
+set "KEYCLOAK_PUBLIC_URL=__SET_ME__"
 set "KEYCLOAK_REALM=forensic"
 set "KEYCLOAK_CLIENT_ID=comparison-web-app"
 set "KEYCLOAK_ADMIN_USER=admin"
@@ -52,6 +52,34 @@ echo.
 
 if "%KEYCLOAK_ADMIN_PASSWORD%"=="__SET_ME__" (
   echo ERROR: Set KEYCLOAK_ADMIN_PASSWORD before running.
+  exit /b 1
+)
+if "%REPO_URL%"=="__SET_ME__" (
+  echo ERROR: Set REPO_URL before running.
+  exit /b 1
+)
+if "%DEPLOY_REF%"=="__SET_ME__" (
+  echo ERROR: Set DEPLOY_REF before running.
+  exit /b 1
+)
+if "%APP_HOST%"=="__SET_ME__" (
+  echo ERROR: Set APP_HOST before running.
+  exit /b 1
+)
+if "%PYTHON_HOST%"=="__SET_ME__" (
+  echo ERROR: Set PYTHON_HOST before running.
+  exit /b 1
+)
+if "%SSO_HOST%"=="__SET_ME__" (
+  echo ERROR: Set SSO_HOST before running.
+  exit /b 1
+)
+if "%APP_BASE_URL%"=="__SET_ME__" (
+  echo ERROR: Set APP_BASE_URL before running.
+  exit /b 1
+)
+if "%KEYCLOAK_PUBLIC_URL%"=="__SET_ME__" (
+  echo ERROR: Set KEYCLOAK_PUBLIC_URL before running.
   exit /b 1
 )
 if "%DB_PASSWORD%"=="__SET_ME__" (
@@ -215,5 +243,8 @@ echo =========================================================
 echo.
 echo SECURITY: Rotate DB, Keycloak admin, API key, and MinIO secrets after deployment.
 del "%LOCAL_DEPLOY_CONF%" >nul 2>&1
+if exist "%LOCAL_DEPLOY_CONF%" (
+  echo WARNING: Failed to delete temporary file %LOCAL_DEPLOY_CONF%
+)
 
 endlocal
