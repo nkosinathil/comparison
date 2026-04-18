@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# =============================================================================
+# deploy.conf — Central deployment configuration
+# Copy to deploy.conf and fill in real values before running any scripts.
+# All scripts source this file for parameters.
+#
+# MULTI-PLATFORM SAFE: These scripts are designed for servers that already
+# host other applications. They will NOT disable existing sites, overwrite
+# shared service configs, or restart services they don't own.
+# =============================================================================
+
+# ---- Project ----
+PROJECT_NAME="comparison"
+REPO_URL="https://github.com/nkosinathil/comparison.git"
+DEPLOY_REF="cursor/continue-migration-85c4"
+
+# Where the repo is (or will be) cloned on each server.
+# The orchestrator (deploy-all.sh) clones automatically to this path.
+# When running setup scripts directly, set this to your clone location.
+# If empty, auto-detected from script location (works when running from inside the clone).
+REPO_ROOT=""
+
+# ---- Servers ----
+SSO_HOST="192.168.1.59"
+APP_HOST="192.168.1.66"
+PYTHON_HOST="192.168.1.90"
+
+SSH_USER_SSO="deploy"
+SSH_USER_APP="deploy"
+SSH_USER_PY="deploy"
+
+# ---- Public URLs (no trailing slash) ----
+APP_BASE_URL="http://192.168.1.66"
+KEYCLOAK_PUBLIC_URL="http://192.168.1.59:8080"
+
+# ---- Keycloak ----
+# Set KEYCLOAK_REALM to an EXISTING realm (e.g. "forensic") to reuse it.
+# The script will NOT create a new realm if one already exists with this name.
+# It will only add/update the client inside the realm.
+KEYCLOAK_REALM="forensic"
+KEYCLOAK_CLIENT_ID="comparison-web-app"
+KEYCLOAK_ADMIN_USER="admin"
+KEYCLOAK_ADMIN_PASSWORD="CHANGE_ME"
+# Client secret will be auto-generated and stored here after keycloak setup:
+KEYCLOAK_CLIENT_SECRET=""
+
+# ---- Database (on APP_HOST) ----
+# Uses its own database, user, and schema — will not touch other databases.
+DB_NAME="comparison_app"
+DB_USER="comparison_user"
+DB_PASSWORD="CHANGE_ME_DB_PASSWORD"
+
+# ---- Redis (on PYTHON_HOST) ----
+# Uses dedicated DB indices to avoid collisions with other apps sharing Redis.
+# Default Redis has DBs 0–15. Pick indices not used by other apps.
+REDIS_DB_BROKER="8"
+REDIS_DB_RESULT="9"
+REDIS_DB_CACHE="10"
+
+# ---- MinIO (on PYTHON_HOST) ----
+# Set MINIO_MANAGED=true if this script should install and manage MinIO.
+# Set MINIO_MANAGED=false if MinIO is already running (managed by another app).
+# When false, just provide the endpoint/credentials of the existing MinIO.
+MINIO_MANAGED="true"
+MINIO_ACCESS_KEY="minioadmin"
+MINIO_SECRET_KEY="CHANGE_ME_MINIO_SECRET"
+MINIO_DATA_DIR="/data/comparison-minio"
+MINIO_SERVICE_NAME="comparison-minio"
+
+# ---- Shared API key (PHP <-> Python) ----
+# Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+API_KEY="CHANGE_ME_SHARED_API_KEY"
+
+# ---- Paths ----
+APP_DEPLOY_DIR="/var/www/gismartanalytics"
+PY_DEPLOY_DIR="/opt/comparison"
+PY_VENV_DIR="${PY_DEPLOY_DIR}/venv"
+PY_LOG_DIR="/var/log/comparison-backend"
+
+# ---- Service user (Python server) ----
+PY_SERVICE_USER="comparison"
+PY_SERVICE_GROUP="comparison"
+
+# ---- PHP version (auto-detected if empty) ----
+PHP_VERSION=""
+
+# ---- Ports ----
+FASTAPI_PORT="8000"
+REDIS_PORT="6379"
+MINIO_PORT="9000"
+MINIO_CONSOLE_PORT="9001"
+PG_PORT="5432"

@@ -60,9 +60,12 @@ class Database
                 ]
             );
 
-            // Set schema if specified
+            // Set schema if specified (whitelist to identifier characters only)
             if (!empty($dbConfig['schema'])) {
-                $this->connection->exec("SET search_path TO {$dbConfig['schema']}");
+                $schema = $dbConfig['schema'];
+                if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $schema)) {
+                    $this->connection->exec("SET search_path TO " . $schema);
+                }
             }
         } catch (PDOException $e) {
             error_log("Database connection failed: " . $e->getMessage());

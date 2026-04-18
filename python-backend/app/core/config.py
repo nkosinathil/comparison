@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     tesseract_enabled: bool = Field(default=True, env="TESSERACT_ENABLED")
     tesseract_lang: str = Field(default="eng", env="TESSERACT_LANG")
     
+    # API Authentication (shared secret between PHP app and this backend)
+    api_key: str = Field(default="", env="API_KEY")
+
     # Logging
     log_file: str = Field(default="/var/log/comparison-backend/app.log", env="LOG_FILE")
     log_max_size: int = Field(default=10485760, env="LOG_MAX_SIZE")  # 10MB

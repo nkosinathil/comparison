@@ -3,6 +3,8 @@
  * Audit Log Repository
  * 
  * Handles security audit logging.
+ * Column mapping matches database/schema.sql:
+ *   audit_logs(id, user_id, action, resource_type, resource_id, details, ip_address, user_agent, created_at)
  */
 
 namespace App\Repositories;
@@ -25,8 +27,8 @@ class AuditLogRepository
     public function log(
         ?int $userId,
         string $action,
-        string $entity,
-        ?int $entityId = null,
+        string $resourceType,
+        ?int $resourceId = null,
         ?array $details = null,
         ?string $ipAddress = null,
         ?string $userAgent = null
@@ -35,16 +37,16 @@ class AuditLogRepository
 
         $stmt = $conn->prepare(
             "INSERT INTO audit_logs 
-             (user_id, action, entity, entity_id, details, ip_address, user_agent)
+             (user_id, action, resource_type, resource_id, details, ip_address, user_agent)
              VALUES 
-             (:user_id, :action, :entity, :entity_id, :details::jsonb, :ip_address, :user_agent)"
+             (:user_id, :action, :resource_type, :resource_id, :details::jsonb, :ip_address, :user_agent)"
         );
 
         return $stmt->execute([
             'user_id' => $userId,
             'action' => $action,
-            'entity' => $entity,
-            'entity_id' => $entityId,
+            'resource_type' => $resourceType,
+            'resource_id' => $resourceId,
             'details' => $details ? json_encode($details) : null,
             'ip_address' => $ipAddress,
             'user_agent' => $userAgent,
@@ -129,9 +131,9 @@ class AuditLogRepository
         $conn = $this->db->getConnection();
 
         $stmt = $conn->prepare(
-            "SELECT a.*, u.email, u.username
+            "SELECT a.*, u.email, u.name
              FROM audit_logs a
-             LEFT JOIN users u ON a.user_id = u.user_id
+             LEFT JOIN users u ON a.user_id = u.id
              ORDER BY a.created_at DESC
              LIMIT :limit OFFSET :offset"
         );

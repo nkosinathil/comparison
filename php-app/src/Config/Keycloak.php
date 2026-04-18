@@ -36,6 +36,11 @@ class Keycloak
         return $this->getRealmUrl() . '/protocol/openid-connect/logout';
     }
 
+    public function getCertsUrl(): string
+    {
+        return $this->getRealmUrl() . '/protocol/openid-connect/certs';
+    }
+
     public function getRealmUrl(): string
     {
         $baseUrl = $this->config->get('keycloak.url');

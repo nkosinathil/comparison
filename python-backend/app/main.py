@@ -35,28 +35,37 @@ if settings.app_env == "development":
     )
 
 
-# Request logging middleware
+_PUBLIC_PATHS = {"/", "/health", "/health/live", "/health/ready", "/docs", "/redoc", "/openapi.json"}
+
+
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log all incoming requests"""
+async def authenticate_and_log(request: Request, call_next):
+    """Validate API key on protected routes and log all requests."""
     start_time = time.time()
-    
-    # Log request
+    path = request.url.path
+
+    # API key enforcement (skip health/docs endpoints)
+    if settings.api_key and path not in _PUBLIC_PATHS:
+        provided = request.headers.get("X-API-Key", "")
+        if provided != settings.api_key:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"error": "Invalid or missing API key"},
+            )
+
     logger.info(
         "Request started",
         extra={
             "method": request.method,
             "url": str(request.url),
             "client": request.client.host if request.client else None,
-        }
+        },
     )
-    
-    # Process request
+
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
-        
-        # Log response
+
         logger.info(
             "Request completed",
             extra={
@@ -64,13 +73,12 @@ async def log_requests(request: Request, call_next):
                 "url": str(request.url),
                 "status_code": response.status_code,
                 "process_time": f"{process_time:.3f}s",
-            }
+            },
         )
-        
-        # Add custom header
+
         response.headers["X-Process-Time"] = str(process_time)
         return response
-    
+
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(
@@ -81,11 +89,11 @@ async def log_requests(request: Request, call_next):
                 "error": str(e),
                 "process_time": f"{process_time:.3f}s",
             },
-            exc_info=True
+            exc_info=True,
         )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"error": "Internal server error", "detail": str(e)}
+            content={"error": "Internal server error", "detail": str(e)},
         )
 
 

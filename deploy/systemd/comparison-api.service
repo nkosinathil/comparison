@@ -1,0 +1,29 @@
+[Unit]
+Description=File Comparison FastAPI Backend
+After=network.target redis.service minio.service
+Wants=redis.service minio.service
+
+[Service]
+Type=simple
+User=comparison
+Group=comparison
+WorkingDirectory=/opt/comparison/python-backend
+EnvironmentFile=/opt/comparison/python-backend/.env
+ExecStart=/opt/comparison/venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --log-level info
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=comparison-api
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/comparison /var/log/comparison-backend /tmp/comparison_processing
+
+[Install]
+WantedBy=multi-user.target

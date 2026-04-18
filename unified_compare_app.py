@@ -184,6 +184,79 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
     return float(dot) / float(na * nb)
 
 
+def tfidf_cosine_similarity(tokens_a: List[str], tokens_b: List[str]) -> float:
+    """Compute TF-IDF weighted cosine similarity between two token lists."""
+    if not tokens_a or not tokens_b:
+        return 0.0
+
+    from collections import Counter
+
+    tf_a = Counter(tokens_a)
+    tf_b = Counter(tokens_b)
+    vocab = set(tf_a.keys()) | set(tf_b.keys())
+    if not vocab:
+        return 0.0
+
+    doc_count = {}
+    for w in vocab:
+        doc_count[w] = (1 if w in tf_a else 0) + (1 if w in tf_b else 0)
+
+    import math as _m
+
+    def _tfidf(tf: Counter, total: int) -> Dict[str, float]:
+        vec: Dict[str, float] = {}
+        for w in vocab:
+            raw_tf = tf.get(w, 0) / total if total else 0.0
+            idf = _m.log(2.0 / doc_count[w]) + 1.0
+            vec[w] = raw_tf * idf
+        return vec
+
+    va = _tfidf(tf_a, len(tokens_a))
+    vb = _tfidf(tf_b, len(tokens_b))
+
+    dot = sum(va[w] * vb[w] for w in vocab)
+    na = _m.sqrt(sum(v * v for v in va.values()))
+    nb = _m.sqrt(sum(v * v for v in vb.values()))
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return float(dot) / float(na * nb)
+
+
+def combined_comparison_score(
+    raw_match: bool,
+    canonical_match: bool,
+    body_match: bool,
+    attachment_overlap_count: int,
+    simhash_distance_value: int,
+    jaccard_value: float,
+    cosine_tfidf_value: float,
+    semantic_value: Optional[float],
+) -> float:
+    """Compute a combined 0-1 comparison score from all available signals."""
+    if raw_match:
+        return 1.0
+    if canonical_match:
+        return 0.98
+    if body_match:
+        return 0.95
+
+    score = 0.0
+    simhash_score = max(0.0, 1.0 - (simhash_distance_value / 64.0))
+    score += 0.20 * simhash_score
+    score += 0.30 * jaccard_value
+    score += 0.30 * cosine_tfidf_value
+
+    if semantic_value is not None:
+        score = score * 0.6 + semantic_value * 0.4
+    else:
+        score = score / 0.80
+
+    if attachment_overlap_count > 0:
+        score = min(1.0, score + 0.10 * attachment_overlap_count)
+
+    return round(min(1.0, max(0.0, score)), 6)
+
+
 # -----------------------------
 # Parsed record
 # -----------------------------
