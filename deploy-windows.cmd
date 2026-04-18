@@ -29,7 +29,7 @@ set "DB_USER=comparison_user"
 set "DB_PASSWORD=__SET_ME__"
 
 set "MINIO_MANAGED=true"
-set "MINIO_ACCESS_KEY=minioadmin"
+set "MINIO_ACCESS_KEY=__SET_ME__"
 set "MINIO_SECRET_KEY=__SET_ME__"
 
 set "API_KEY=__SET_ME__"
@@ -39,7 +39,7 @@ set "REDIS_DB_RESULT=9"
 set "REDIS_DB_CACHE=10"
 
 REM ---- DO NOT EDIT BELOW THIS LINE ----
-set "SSH_OPTS=-o StrictHostKeyChecking=yes -o ConnectTimeout=15"
+set "SSH_OPTS=-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
 
 echo.
 echo =========================================================
@@ -62,8 +62,62 @@ if "%MINIO_SECRET_KEY%"=="__SET_ME__" (
   echo ERROR: Set MINIO_SECRET_KEY before running.
   exit /b 1
 )
+if "%MINIO_ACCESS_KEY%"=="__SET_ME__" (
+  echo ERROR: Set MINIO_ACCESS_KEY before running.
+  exit /b 1
+)
 if "%API_KEY%"=="__SET_ME__" (
   echo ERROR: Set API_KEY before running.
+  exit /b 1
+)
+
+set "LOCAL_DEPLOY_CONF=%TEMP%\comparison-deploy.conf"
+> "%LOCAL_DEPLOY_CONF%" (
+  echo PROJECT_NAME='comparison'
+  echo REPO_URL='%REPO_URL%'
+  echo DEPLOY_REF='%DEPLOY_REF%'
+  echo REPO_ROOT=''
+  echo SSO_HOST='%SSO_HOST%'
+  echo APP_HOST='%APP_HOST%'
+  echo PYTHON_HOST='%PYTHON_HOST%'
+  echo SSH_USER_SSO='%SSH_USER_SSO%'
+  echo SSH_USER_APP='%SSH_USER_APP%'
+  echo SSH_USER_PY='%SSH_USER_PY%'
+  echo APP_BASE_URL='%APP_BASE_URL%'
+  echo KEYCLOAK_PUBLIC_URL='%KEYCLOAK_PUBLIC_URL%'
+  echo KEYCLOAK_REALM='%KEYCLOAK_REALM%'
+  echo KEYCLOAK_CLIENT_ID='%KEYCLOAK_CLIENT_ID%'
+  echo KEYCLOAK_ADMIN_USER='%KEYCLOAK_ADMIN_USER%'
+  echo KEYCLOAK_ADMIN_PASSWORD='%KEYCLOAK_ADMIN_PASSWORD%'
+  echo KEYCLOAK_CLIENT_SECRET=''
+  echo KEYCLOAK_CREATE_REALM='false'
+  echo DB_NAME='%DB_NAME%'
+  echo DB_USER='%DB_USER%'
+  echo DB_PASSWORD='%DB_PASSWORD%'
+  echo REDIS_DB_BROKER='%REDIS_DB_BROKER%'
+  echo REDIS_DB_RESULT='%REDIS_DB_RESULT%'
+  echo REDIS_DB_CACHE='%REDIS_DB_CACHE%'
+  echo MINIO_MANAGED='%MINIO_MANAGED%'
+  echo MINIO_ACCESS_KEY='%MINIO_ACCESS_KEY%'
+  echo MINIO_SECRET_KEY='%MINIO_SECRET_KEY%'
+  echo MINIO_DATA_DIR='/data/comparison-minio'
+  echo MINIO_SERVICE_NAME='comparison-minio'
+  echo API_KEY='%API_KEY%'
+  echo APP_DEPLOY_DIR='/var/www/gismartanalytics'
+  echo PY_DEPLOY_DIR='/opt/comparison'
+  echo PY_VENV_DIR='/opt/comparison/venv'
+  echo PY_LOG_DIR='/var/log/comparison-backend'
+  echo PY_SERVICE_USER='comparison'
+  echo PY_SERVICE_GROUP='comparison'
+  echo PHP_VERSION=''
+  echo FASTAPI_PORT='8000'
+  echo REDIS_PORT='6379'
+  echo MINIO_PORT='9000'
+  echo MINIO_CONSOLE_PORT='9001'
+  echo PG_PORT='5432'
+)
+if errorlevel 1 (
+  echo ERROR: Failed creating local deploy.conf template at %LOCAL_DEPLOY_CONF%
   exit /b 1
 )
 
@@ -94,50 +148,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-ssh %SSH_OPTS% %SSH_USER_APP%@%APP_HOST% "cat > %CLONE_DIR%/deploy/scripts/deploy.conf << 'DEPLOYEOF'^
-PROJECT_NAME='comparison'^
-REPO_URL='%REPO_URL%'^
-DEPLOY_REF='%DEPLOY_REF%'^
-REPO_ROOT=''^
-SSO_HOST='%SSO_HOST%'^
-APP_HOST='%APP_HOST%'^
-PYTHON_HOST='%PYTHON_HOST%'^
-SSH_USER_SSO='%SSH_USER_SSO%'^
-SSH_USER_APP='%SSH_USER_APP%'^
-SSH_USER_PY='%SSH_USER_PY%'^
-APP_BASE_URL='%APP_BASE_URL%'^
-KEYCLOAK_PUBLIC_URL='%KEYCLOAK_PUBLIC_URL%'^
-KEYCLOAK_REALM='%KEYCLOAK_REALM%'^
-KEYCLOAK_CLIENT_ID='%KEYCLOAK_CLIENT_ID%'^
-KEYCLOAK_ADMIN_USER='%KEYCLOAK_ADMIN_USER%'^
-KEYCLOAK_ADMIN_PASSWORD='%KEYCLOAK_ADMIN_PASSWORD%'^
-KEYCLOAK_CLIENT_SECRET=''^
-KEYCLOAK_CREATE_REALM='false'^
-DB_NAME='%DB_NAME%'^
-DB_USER='%DB_USER%'^
-DB_PASSWORD='%DB_PASSWORD%'^
-REDIS_DB_BROKER='%REDIS_DB_BROKER%'^
-REDIS_DB_RESULT='%REDIS_DB_RESULT%'^
-REDIS_DB_CACHE='%REDIS_DB_CACHE%'^
-MINIO_MANAGED='%MINIO_MANAGED%'^
-MINIO_ACCESS_KEY='%MINIO_ACCESS_KEY%'^
-MINIO_SECRET_KEY='%MINIO_SECRET_KEY%'^
-MINIO_DATA_DIR='/data/comparison-minio'^
-MINIO_SERVICE_NAME='comparison-minio'^
-API_KEY='%API_KEY%'^
-APP_DEPLOY_DIR='/var/www/gismartanalytics'^
-PY_DEPLOY_DIR='/opt/comparison'^
-PY_VENV_DIR='/opt/comparison/venv'^
-PY_LOG_DIR='/var/log/comparison-backend'^
-PY_SERVICE_USER='comparison'^
-PY_SERVICE_GROUP='comparison'^
-PHP_VERSION=''^
-FASTAPI_PORT='8000'^
-REDIS_PORT='6379'^
-MINIO_PORT='9000'^
-MINIO_CONSOLE_PORT='9001'^
-PG_PORT='5432'^
-DEPLOYEOF"
+type "%LOCAL_DEPLOY_CONF%" | ssh %SSH_OPTS% %SSH_USER_APP%@%APP_HOST% "cat > %CLONE_DIR%/deploy/scripts/deploy.conf"
 if errorlevel 1 (
   echo ERROR: Failed writing deploy.conf on App Server
   exit /b 1
@@ -168,50 +179,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-ssh %SSH_OPTS% %SSH_USER_PY%@%PYTHON_HOST% "cat > %CLONE_DIR%/deploy/scripts/deploy.conf << 'DEPLOYEOF'^
-PROJECT_NAME='comparison'^
-REPO_URL='%REPO_URL%'^
-DEPLOY_REF='%DEPLOY_REF%'^
-REPO_ROOT=''^
-SSO_HOST='%SSO_HOST%'^
-APP_HOST='%APP_HOST%'^
-PYTHON_HOST='%PYTHON_HOST%'^
-SSH_USER_SSO='%SSH_USER_SSO%'^
-SSH_USER_APP='%SSH_USER_APP%'^
-SSH_USER_PY='%SSH_USER_PY%'^
-APP_BASE_URL='%APP_BASE_URL%'^
-KEYCLOAK_PUBLIC_URL='%KEYCLOAK_PUBLIC_URL%'^
-KEYCLOAK_REALM='%KEYCLOAK_REALM%'^
-KEYCLOAK_CLIENT_ID='%KEYCLOAK_CLIENT_ID%'^
-KEYCLOAK_ADMIN_USER='%KEYCLOAK_ADMIN_USER%'^
-KEYCLOAK_ADMIN_PASSWORD='%KEYCLOAK_ADMIN_PASSWORD%'^
-KEYCLOAK_CLIENT_SECRET=''^
-KEYCLOAK_CREATE_REALM='false'^
-DB_NAME='%DB_NAME%'^
-DB_USER='%DB_USER%'^
-DB_PASSWORD='%DB_PASSWORD%'^
-REDIS_DB_BROKER='%REDIS_DB_BROKER%'^
-REDIS_DB_RESULT='%REDIS_DB_RESULT%'^
-REDIS_DB_CACHE='%REDIS_DB_CACHE%'^
-MINIO_MANAGED='%MINIO_MANAGED%'^
-MINIO_ACCESS_KEY='%MINIO_ACCESS_KEY%'^
-MINIO_SECRET_KEY='%MINIO_SECRET_KEY%'^
-MINIO_DATA_DIR='/data/comparison-minio'^
-MINIO_SERVICE_NAME='comparison-minio'^
-API_KEY='%API_KEY%'^
-APP_DEPLOY_DIR='/var/www/gismartanalytics'^
-PY_DEPLOY_DIR='/opt/comparison'^
-PY_VENV_DIR='/opt/comparison/venv'^
-PY_LOG_DIR='/var/log/comparison-backend'^
-PY_SERVICE_USER='comparison'^
-PY_SERVICE_GROUP='comparison'^
-PHP_VERSION=''^
-FASTAPI_PORT='8000'^
-REDIS_PORT='6379'^
-MINIO_PORT='9000'^
-MINIO_CONSOLE_PORT='9001'^
-PG_PORT='5432'^
-DEPLOYEOF"
+type "%LOCAL_DEPLOY_CONF%" | ssh %SSH_OPTS% %SSH_USER_PY%@%PYTHON_HOST% "cat > %CLONE_DIR%/deploy/scripts/deploy.conf"
 if errorlevel 1 (
   echo ERROR: Failed writing deploy.conf on Python Server
   exit /b 1
@@ -246,5 +214,6 @@ echo   Open %APP_BASE_URL% in your browser to test.
 echo =========================================================
 echo.
 echo SECURITY: Rotate DB, Keycloak admin, API key, and MinIO secrets after deployment.
+del "%LOCAL_DEPLOY_CONF%" >nul 2>&1
 
 endlocal
