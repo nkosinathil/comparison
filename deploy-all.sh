@@ -23,7 +23,7 @@ APP_DEPLOY_DIR="${APP_DEPLOY_DIR:-/var/www/comparison.gismartanalytics}"
 
 # NOTE: accept-new auto-trusts first-seen host keys for bootstrap automation.
 # For stricter security, pre-seed known_hosts and change this to StrictHostKeyChecking=yes.
-SSH_OPTS="${SSH_OPTS:--o BatchMode=yes -o StrictHostKeyChecking=accept-new}"
+SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new)
 
 # =========================
 # Helpers
@@ -33,7 +33,7 @@ run_remote() {
   local host="$2"
   local cmd="$3"
   echo "==== [${user}@${host}] $cmd"
-  printf '%s\n' "$cmd" | ssh ${SSH_OPTS} "${user}@${host}" "bash -se"
+  printf '%s\n' "$cmd" | ssh "${SSH_OPTS[@]}" "${user}@${host}" "bash -se"
 }
 
 sync_repo_cmd="
@@ -42,7 +42,7 @@ if ! command -v git >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get update -qq && sudo apt-get install -y -qq git
   else
-    echo 'git not found and apt-get unavailable. Install git manually.' >&2
+    echo 'git not found and apt-get unavailable. Install git manually, then re-run this script.' >&2
     exit 1
   fi
 fi
