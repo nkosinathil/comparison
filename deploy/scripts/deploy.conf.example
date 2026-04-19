@@ -30,15 +30,15 @@ SSH_USER_APP="apps"
 SSH_USER_PY="pyminio"
 
 # ---- Public URLs (no trailing slash) ----
-APP_BASE_URL="http://192.168.1.66"
+APP_BASE_URL="http://file.gismartanalytics.com"
 KEYCLOAK_PUBLIC_URL="http://192.168.1.59:8080"
 
 # ---- Keycloak ----
 # Set KEYCLOAK_REALM to an EXISTING realm (e.g. "forensic") to reuse it.
 # The script will NOT create a new realm if one already exists with this name.
 # It will only add/update the client inside the realm.
-KEYCLOAK_REALM="forensic"
-KEYCLOAK_CLIENT_ID="comparison-web-app"
+KEYCLOAK_REALM="forensics"
+KEYCLOAK_CLIENT_ID="file.gismartanalytics.com"
 KEYCLOAK_ADMIN_USER="tempadmin"
 KEYCLOAK_ADMIN_PASSWORD="TempAdmin#2026"
 # Client secret will be auto-generated and stored here after keycloak setup:
@@ -72,7 +72,7 @@ MINIO_SERVICE_NAME="comparison-minio"
 API_KEY="b73906ec5f8222caeb548f8bedf03ea1bccfe96e21baa370"
 
 # ---- Paths ----
-APP_DEPLOY_DIR="/var/www/gismartanalytics"
+APP_DEPLOY_DIR="/var/www/file.gismartanalytics"
 PY_DEPLOY_DIR="/opt/comparison"
 PY_VENV_DIR="${PY_DEPLOY_DIR}/venv"
 PY_LOG_DIR="/var/log/comparison-backend"
