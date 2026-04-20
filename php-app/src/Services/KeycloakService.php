@@ -27,9 +27,18 @@ class KeycloakService
     {
         $this->keycloak = new Keycloak();
         $this->config = AppConfig::getInstance();
+
+        // TLS verification: defaults to true.
+        // Set KEYCLOAK_TLS_VERIFY=false in .env ONLY for LAN/HTTP dev environments.
+        // Must be true in production.
+        $tlsVerify = filter_var(
+            $_ENV['KEYCLOAK_TLS_VERIFY'] ?? 'true',
+            FILTER_VALIDATE_BOOLEAN
+        );
+
         $this->httpClient = new Client([
             'timeout' => 10,
-            'verify' => true,
+            'verify' => $tlsVerify,
         ]);
     }
 
@@ -154,8 +163,11 @@ class KeycloakService
     /**
      * Decode and verify a JWT token using Keycloak's JWKS public keys.
      *
-     * Falls back to unsigned decode if the JWKS endpoint is unreachable
-     * (e.g. during initial dev setup), but logs a warning.
+     * Falls back to unsigned decode ONLY when:
+     *   - JWKS endpoint is unreachable, AND
+     *   - KEYCLOAK_ALLOW_INSECURE_JWT_DEV=true is explicitly set in .env.
+     *
+     * The fallback is disabled by default and must never be enabled in production.
      */
     public function decodeToken(string $token): ?array
     {
@@ -170,7 +182,18 @@ class KeycloakService
             return null;
         }
 
-        return $this->decodeTokenUnsafe($token);
+        // Only allow unsafe fallback when explicitly enabled for dev/LAN testing.
+        $allowInsecure = filter_var(
+            $_ENV['KEYCLOAK_ALLOW_INSECURE_JWT_DEV'] ?? 'false',
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if ($allowInsecure) {
+            return $this->decodeTokenUnsafe($token);
+        }
+
+        error_log("JWKS unavailable and KEYCLOAK_ALLOW_INSECURE_JWT_DEV is not enabled — token rejected.");
+        return null;
     }
 
     /**

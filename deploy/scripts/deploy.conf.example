@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # =============================================================================
-# deploy.conf — Central deployment configuration
-# Copy to deploy.conf and fill in real values before running any scripts.
-# All scripts source this file for parameters.
+# deploy.conf.example — Central deployment configuration TEMPLATE
+# Copy this file to deploy.conf and fill in real values before deploying.
+#   cp deploy.conf.example deploy.conf
+#   nano deploy.conf        # fill in all __CHANGE_ME__ values
+#
+# NEVER commit deploy.conf — it contains secrets. It is listed in .gitignore.
 #
 # MULTI-PLATFORM SAFE: These scripts are designed for servers that already
 # host other applications. They will NOT disable existing sites, overwrite
@@ -12,7 +15,9 @@
 # ---- Project ----
 PROJECT_NAME="comparison"
 REPO_URL="https://github.com/nkosinathil/comparison.git"
-DEPLOY_REF="cursor/continue-migration-85c4"
+# Set DEPLOY_REF to the branch or tag you want to deploy.
+# Do NOT leave this as "main" if you are deploying a feature/release branch.
+DEPLOY_REF="__CHANGE_ME__"
 
 # Where the repo is (or will be) cloned on each server.
 # The orchestrator (deploy-all.sh) clones automatically to this path.
@@ -25,22 +30,22 @@ SSO_HOST="192.168.1.59"
 APP_HOST="192.168.1.66"
 PYTHON_HOST="192.168.1.90"
 
-SSH_USER_SSO="ssoadmin"
-SSH_USER_APP="apps"
-SSH_USER_PY="pyminio"
+SSH_USER_SSO="deploy"
+SSH_USER_APP="deploy"
+SSH_USER_PY="deploy"
 
 # ---- Public URLs (no trailing slash) ----
 APP_BASE_URL="http://file.gismartanalytics.com"
 KEYCLOAK_PUBLIC_URL="http://192.168.1.59:8080"
 
 # ---- Keycloak ----
-# Set KEYCLOAK_REALM to an EXISTING realm (e.g. "forensic") to reuse it.
+# Set KEYCLOAK_REALM to an EXISTING realm (e.g. "forensics") to reuse it.
 # The script will NOT create a new realm if one already exists with this name.
 # It will only add/update the client inside the realm.
 KEYCLOAK_REALM="forensics"
 KEYCLOAK_CLIENT_ID="file.gismartanalytics.com"
-KEYCLOAK_ADMIN_USER="tempadmin"
-KEYCLOAK_ADMIN_PASSWORD="TempAdmin#2026"
+KEYCLOAK_ADMIN_USER="__CHANGE_ME__"
+KEYCLOAK_ADMIN_PASSWORD="__CHANGE_ME__"
 # Client secret will be auto-generated and stored here after keycloak setup:
 KEYCLOAK_CLIENT_SECRET=""
 
@@ -48,7 +53,7 @@ KEYCLOAK_CLIENT_SECRET=""
 # Uses its own database, user, and schema — will not touch other databases.
 DB_NAME="comparison_app"
 DB_USER="comparison_user"
-DB_PASSWORD="5ucc3SS!@#s"
+DB_PASSWORD="__CHANGE_ME__"
 
 # ---- Redis (on PYTHON_HOST) ----
 # Uses dedicated DB indices to avoid collisions with other apps sharing Redis.
@@ -62,14 +67,14 @@ REDIS_DB_CACHE="10"
 # Set MINIO_MANAGED=false if MinIO is already running (managed by another app).
 # When false, just provide the endpoint/credentials of the existing MinIO.
 MINIO_MANAGED="true"
-MINIO_ACCESS_KEY="minioadmin"
-MINIO_SECRET_KEY="n80FuR61Xah4wD6aEe3Dar8G2xIOsJUy"
+MINIO_ACCESS_KEY="__CHANGE_ME__"
+MINIO_SECRET_KEY="__CHANGE_ME__"
 MINIO_DATA_DIR="/data/comparison-minio"
 MINIO_SERVICE_NAME="comparison-minio"
 
 # ---- Shared API key (PHP <-> Python) ----
 # Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-API_KEY="b73906ec5f8222caeb548f8bedf03ea1bccfe96e21baa370"
+API_KEY="__CHANGE_ME__"
 
 # ---- Paths ----
 APP_DEPLOY_DIR="/var/www/file.gismartanalytics"

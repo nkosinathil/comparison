@@ -19,8 +19,8 @@ set "SSH_USER_PY=deploy"
 
 set "APP_BASE_URL=__SET_ME__"
 set "KEYCLOAK_PUBLIC_URL=__SET_ME__"
-set "KEYCLOAK_REALM=forensic"
-set "KEYCLOAK_CLIENT_ID=comparison-web-app"
+set "KEYCLOAK_REALM=forensics"
+set "KEYCLOAK_CLIENT_ID=file.gismartanalytics.com"
 set "KEYCLOAK_ADMIN_USER=admin"
 set "KEYCLOAK_ADMIN_PASSWORD=__SET_ME__"
 
@@ -131,7 +131,7 @@ set "LOCAL_DEPLOY_CONF=%TEMP%\comparison-deploy.conf"
   echo MINIO_DATA_DIR='/data/comparison-minio'
   echo MINIO_SERVICE_NAME='comparison-minio'
   echo API_KEY='%API_KEY%'
-  echo APP_DEPLOY_DIR='/var/www/comparison.gismartanalytics'
+  echo APP_DEPLOY_DIR='/var/www/file.gismartanalytics'
   echo PY_DEPLOY_DIR='/opt/comparison'
   echo PY_VENV_DIR='/opt/comparison/venv'
   echo PY_LOG_DIR='/var/log/comparison-backend'

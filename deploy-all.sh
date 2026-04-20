@@ -13,7 +13,7 @@ APP_HOST="${APP_HOST:-__SET_ME__}"
 PY_HOST="${PY_HOST:-__SET_ME__}"
 
 REPO_URL="${REPO_URL:-__SET_ME__}"
-DEPLOY_REF="${DEPLOY_REF:-main}"
+DEPLOY_REF="${DEPLOY_REF:-}"
 
 # Absolute path on remote servers
 CLONE_DIR="${CLONE_DIR:-/opt/comparison-deploy}"
@@ -53,11 +53,17 @@ resolve_local_deploy_conf() {
 
   if [[ -f "${SCRIPT_DIR}/deploy.conf" ]]; then
     LOCAL_DEPLOY_CONF="${SCRIPT_DIR}/deploy.conf"
+  elif [[ -f "${SCRIPT_DIR}/deploy.conf.example" ]]; then
+    echo "ERROR: Found deploy.conf.example but not deploy.conf." >&2
+    echo "  Copy and fill in your values:" >&2
+    echo "  cp '${SCRIPT_DIR}/deploy.conf.example' '${SCRIPT_DIR}/deploy.conf'" >&2
+    echo "  # then edit '${SCRIPT_DIR}/deploy.conf'" >&2
+    exit 1
   elif [[ -f "${SCRIPT_DIR}/deploy/scripts/deploy.conf" ]]; then
     LOCAL_DEPLOY_CONF="${SCRIPT_DIR}/deploy/scripts/deploy.conf"
   else
     echo "ERROR: Missing deploy.conf. Create one with:" >&2
-    echo "  cp -n '${SCRIPT_DIR}/deploy/scripts/deploy.conf.example' '${SCRIPT_DIR}/deploy.conf'" >&2
+    echo "  cp '${SCRIPT_DIR}/deploy.conf.example' '${SCRIPT_DIR}/deploy.conf'" >&2
     echo "  # then edit '${SCRIPT_DIR}/deploy.conf'" >&2
     exit 1
   fi
@@ -111,6 +117,12 @@ require_set "SSO_HOST" "${SSO_HOST}"
 require_set "APP_HOST" "${APP_HOST}"
 require_set "PY_HOST" "${PY_HOST}"
 require_set "REPO_URL" "${REPO_URL}"
+if [[ -z "${DEPLOY_REF}" ]]; then
+  echo "ERROR: DEPLOY_REF is not set. Set it explicitly before running:" >&2
+  echo "  export DEPLOY_REF=copilot/update-deploy-windows-cmd" >&2
+  echo "  # or set DEPLOY_REF in your deploy.conf" >&2
+  exit 1
+fi
 resolve_local_deploy_conf
 
 # =========================

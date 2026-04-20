@@ -5,3 +5,6 @@ out2/
 __pycache__/
 *.pyc
 .env
+# deploy.conf contains real secrets — never commit it; copy from deploy.conf.example
+deploy.conf
+deploy/scripts/deploy.conf
