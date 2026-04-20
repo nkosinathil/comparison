@@ -45,6 +45,12 @@ class AppConfig
                 'client_secret' => $_ENV['KEYCLOAK_CLIENT_SECRET'] ?? '',
                 'redirect_uri' => $_ENV['KEYCLOAK_REDIRECT_URI'] ?? '',
                 'logout_redirect' => $_ENV['KEYCLOAK_LOGOUT_REDIRECT'] ?? '',
+                // TLS verification for Keycloak HTTP calls. Defaults to true.
+                // Set KEYCLOAK_TLS_VERIFY=false only for LAN/HTTP dev environments.
+                'tls_verify' => filter_var($_ENV['KEYCLOAK_TLS_VERIFY'] ?? 'true', FILTER_VALIDATE_BOOLEAN),
+                // Allow unsigned JWT decoding as a dev fallback when JWKS is unreachable.
+                // Defaults to false. NEVER enable in production.
+                'allow_insecure_jwt_dev' => filter_var($_ENV['KEYCLOAK_ALLOW_INSECURE_JWT_DEV'] ?? 'false', FILTER_VALIDATE_BOOLEAN),
             ],
             'session' => [
                 'driver' => $_ENV['SESSION_DRIVER'] ?? 'file',

@@ -31,10 +31,7 @@ class KeycloakService
         // TLS verification: defaults to true.
         // Set KEYCLOAK_TLS_VERIFY=false in .env ONLY for LAN/HTTP dev environments.
         // Must be true in production.
-        $tlsVerify = filter_var(
-            $_ENV['KEYCLOAK_TLS_VERIFY'] ?? 'true',
-            FILTER_VALIDATE_BOOLEAN
-        );
+        $tlsVerify = $this->config->get('keycloak.tls_verify', true);
 
         $this->httpClient = new Client([
             'timeout' => 10,
@@ -183,10 +180,7 @@ class KeycloakService
         }
 
         // Only allow unsafe fallback when explicitly enabled for dev/LAN testing.
-        $allowInsecure = filter_var(
-            $_ENV['KEYCLOAK_ALLOW_INSECURE_JWT_DEV'] ?? 'false',
-            FILTER_VALIDATE_BOOLEAN
-        );
+        $allowInsecure = $this->config->get('keycloak.allow_insecure_jwt_dev', false);
 
         if ($allowInsecure) {
             return $this->decodeTokenUnsafe($token);
